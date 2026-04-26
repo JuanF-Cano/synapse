@@ -1,0 +1,28 @@
+synapse/
+│
+├── backend/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── routes/
+│   │   ├── models/
+│   │   ├── services/
+│   │   └── app.js
+│   │
+│   ├── package.json
+│   └── .env
+│
+├── frontend/
+│   ├── pages/
+│   ├── js/
+│   ├── css/
+│   └── index.html
+│
+├── database/
+│   ├── schema.sql
+│   ├── seed.sql
+│
+├── docs/
+│   └── semantica.pdf
+│
+└── README.md
