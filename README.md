@@ -108,6 +108,7 @@ erDiagram
         int id_cita PK
         int id_paciente FK
         int id_medico FK
+        int id_estado FK
         timestamp fecha
         string motivo
         string observaciones
@@ -115,14 +116,13 @@ erDiagram
     }
 
     ESTADOS_CITA {
-        int id_cita PK
+        int id_estado PK
         string estado
     }
 
     HISTORIAS_CLINICAS {
         int id_historia PK
         int id_cita FK
-        int id_paciente FK
         string descripcion_general
         string observaciones
         timestamp fecha
@@ -142,13 +142,14 @@ erDiagram
     FACTURAS {
         int id_factura PK
         int id_cita FK
+        int id_estado FK
         string concepto
         float monto
         timestamp created_at
     }
 
     ESTADOS_FACTURA {
-        int id_factura PK
+        int id_estado PK
         string estado
         timestamp updated_at
     }
@@ -158,7 +159,7 @@ erDiagram
         int id_factura FK
         float monto
         string metodo_pago
-        timestamp fecha
+        timestamp created_at
     }
 
     %% RELACIONES
@@ -175,11 +176,11 @@ erDiagram
     PERSONAL }o--|| ZONAS : asignado
     PERSONAL_SALUD }o--|| ESPECIALIDADES : pertenece
 
-    PACIENTES ||--|| CITAS : agenda
+    PACIENTES ||--o{ CITAS : agenda
     PERSONAL_SALUD ||--o{ CITAS : atiende
 
-    CITAS ||--o{ HISTORIAS_CLINICAS : genera
-
+    CITAS ||--|| HISTORIAS_CLINICAS : genera
+    CITAS }o--|| ESTADOS_CITA : estado
     CITAS ||--o{ TRATAMIENTOS_CITA : incluye
     TRATAMIENTOS ||--o{ TRATAMIENTOS_CITA : aplicado
 
