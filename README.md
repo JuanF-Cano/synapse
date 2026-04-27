@@ -63,29 +63,34 @@ erDiagram
         timestamp created_at
     }
 
-    TIPO_USUARIO {
-        int id_usuario PK
-        int tipo PK
+    TIPOS_USUARIO {
+        int id_tipo PK
+        string nombre
+    }
+
+    USUARIO_TIPO {
+        int id_usuario PK, FK
+        int id_tipo PK, FK
     }
 
     PACIENTES {
-        int id_usuario PK
+        int id_usuario PK, FK
     }
 
     PERSONAL {
-        int id_usuario PK
-        int zona
+        int id_usuario PK, FK
+        int id_zona FK
     }
 
     PERSONAL_SALUD {
-        int id_usuario PK
+        int id_usuario PK, FK
         string numero_licencia
-        int id_especialidad
+        int id_especialidad FK
         boolean estado
     }
 
     PERSONAL_ADMINISTRATIVO {
-        int id_usuario PK
+        int id_usuario PK, FK
     }
 
     ESPECIALIDADES {
@@ -101,18 +106,23 @@ erDiagram
 
     CITAS {
         int id_cita PK
-        int id_paciente
-        int id_medico
+        int id_paciente FK
+        int id_medico FK
         timestamp fecha
-        string estado
         string motivo
         string observaciones
         timestamp created_at
     }
 
-    HISTORIAS_CLINICAS {
+    ESTADOS_CITA {
         int id_cita PK
-        int id_paciente PK
+        string estado
+    }
+
+    HISTORIAS_CLINICAS {
+        int id_historia PK
+        int id_cita FK
+        int id_paciente FK
         string descripcion_general
         string observaciones
         timestamp fecha
@@ -125,13 +135,13 @@ erDiagram
     }
 
     TRATAMIENTOS_CITA {
-        int id_cita PK
-        int id_tratamiento PK
+        int id_cita PK, FK
+        int id_tratamiento PK, FK
     }
 
     FACTURAS {
         int id_factura PK
-        int id_cita
+        int id_cita FK
         string concepto
         float monto
         timestamp created_at
@@ -143,30 +153,39 @@ erDiagram
         timestamp updated_at
     }
 
+    PAGOS {
+        int id_pago PK
+        int id_factura FK
+        float monto
+        string metodo_pago
+        timestamp fecha
+    }
 
     %% RELACIONES
 
-    USUARIOS ||--o{ TIPO_USUARIO : tiene
-    USUARIOS ||--|| PACIENTES : es
-    USUARIOS ||--|| PERSONAL : es
+    USUARIOS ||--o{ USUARIO_TIPO : tiene
+    TIPOS_USUARIO ||--o{ USUARIO_TIPO : clasifica
 
-    PERSONAL ||--|| PERSONAL_SALUD : especializa
-    PERSONAL ||--|| PERSONAL_ADMINISTRATIVO : especializa
+    USUARIOS ||--o{ PACIENTES : es
+    USUARIOS ||--o{ PERSONAL : es
+
+    PERSONAL ||--o{ PERSONAL_SALUD : especializa
+    PERSONAL ||--o{ PERSONAL_ADMINISTRATIVO : especializa
 
     PERSONAL }o--|| ZONAS : asignado
-
     PERSONAL_SALUD }o--|| ESPECIALIDADES : pertenece
 
-    PACIENTES ||--o{ CITAS : agenda
+    PACIENTES ||--|| CITAS : agenda
     PERSONAL_SALUD ||--o{ CITAS : atiende
 
-    CITAS ||--|| HISTORIAS_CLINICAS : genera
+    CITAS ||--o{ HISTORIAS_CLINICAS : genera
 
     CITAS ||--o{ TRATAMIENTOS_CITA : incluye
     TRATAMIENTOS ||--o{ TRATAMIENTOS_CITA : aplicado
 
     CITAS ||--|| FACTURAS : genera
-    FACTURAS ||--|| ESTADOS_FACTURA : estado
+    FACTURAS ||--o{ PAGOS : recibe
+    FACTURAS }o--|| ESTADOS_FACTURA : estado
 ```
 
 ---
