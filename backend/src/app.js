@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 require("dotenv").config();
 const routes = require('./routes');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
+
 const testRoutes = require('./routes/test.routes.js');
 const userRouter = require('./routes/user.routes.js');
 const authRouter = require('./routes/auth.routes.js');
@@ -21,6 +24,9 @@ app.use(express.json());
 
 // Permite conexiones desde frontend (CORS)
 app.use(cors());
+
+// Documentación
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ==== Rutas =====
 
