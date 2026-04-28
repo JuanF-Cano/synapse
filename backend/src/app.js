@@ -5,7 +5,7 @@ const routes = require('./routes');
 const testRoutes = require('./routes/test.routes.js');
 const userRouter = require('./routes/user.routes.js');
 const authRouter = require('./routes/auth.routes.js');
-//const patientRouter = require('./routes/patient.routes.js');
+const patientRouter = require('./routes/patient.routes.js');
 //const staffRouter = require('./routes/staff.routes.js');
 
 const app = express();
@@ -27,7 +27,7 @@ app.use('/', routes);
 app.use('/api', testRoutes);
 app.use('/api', userRouter);
 app.use('/api', authRouter);
-//app.use('/api', patientRouter);
+app.use('/api', patientRouter);
 //app.use('/api', staffRouter); 
 
 // ===== SERVIDOR =====
