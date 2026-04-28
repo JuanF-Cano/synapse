@@ -7,6 +7,7 @@ const userRouter = require('./routes/user.routes.js');
 const authRouter = require('./routes/auth.routes.js');
 const patientRouter = require('./routes/patient.routes.js');
 const staffRouter = require('./routes/staff.routes.js');
+const appointmentRouter = require('./routes/appointment.routes.js');
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api', userRouter);
 app.use('/api', authRouter);
 app.use('/api', patientRouter);
 app.use('/api', staffRouter); 
+app.use('/api', appointmentRouter); 
 
 // ===== SERVIDOR =====
 
