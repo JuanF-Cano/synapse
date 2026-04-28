@@ -4,7 +4,7 @@ const pool = require('../config/db');
 const BillingService = {
 
   async createFactura(data) {
-    const { id_cita } = data;
+    const { copago, id_cita } = data;
 
     // verificar cita
     const cita = await pool.query(
@@ -25,7 +25,7 @@ const BillingService = {
     }
 
     // calcular monto
-    const total = await BillingModel.getTotalFromCita(id_cita);
+    const total = await BillingModel.getTotalFromCita(copago, id_cita);
 
     if (total === 0) {
       throw new Error('No hay tratamientos asociados a la cita');
