@@ -7,9 +7,7 @@ const AppointmentService = {
 
     const { id_paciente, id_medico, fecha } = data;
 
-    // 🔴 VALIDACIONES IMPORTANTES
-
-    // 1. Validar paciente existe
+    // Validar paciente existe
     const paciente = await pool.query(
       'SELECT * FROM pacientes WHERE id_usuario = $1',
       [id_paciente]
@@ -18,7 +16,7 @@ const AppointmentService = {
       throw new Error('Paciente no existe');
     }
 
-    // 2. Validar médico existe
+    // Validar médico existe
     const medico = await pool.query(
       'SELECT * FROM personal_salud WHERE id_usuario = $1',
       [id_medico]
@@ -27,12 +25,12 @@ const AppointmentService = {
       throw new Error('Médico no existe');
     }
 
-    // 3. Validar fecha futura
+    // Validar fecha futura
     if (new Date(fecha) < new Date()) {
       throw new Error('La cita debe ser en el futuro');
     }
 
-    // 4. Estado inicial = pendiente (1 según seed)
+    // Estado inicial = pendiente (id 1)
     data.id_estado = 1;
 
     return await AppointmentModel.createAppointment(data);
