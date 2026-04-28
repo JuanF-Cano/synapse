@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 
 const PatientController = require('../controllers/patient.controller');
-const { verifyToken, isAdmin } = require('../middlewares/auth.middleware');
+const { verifyToken, authorizeRoles } = require('../middlewares/auth.middleware');
 
 // Crear paciente (solo admin por ejemplo)
-router.post('/patients', verifyToken, isAdmin, PatientController.create);
+router.post('/patients', verifyToken, authorizeRoles('admin', 'recepcionista'), PatientController.create);
 
 // Obtener todos
 router.get('/patients', verifyToken, PatientController.getAll);
@@ -14,6 +14,6 @@ router.get('/patients', verifyToken, PatientController.getAll);
 router.get('/patients/:id', verifyToken, PatientController.getById);
 
 // Eliminar
-router.delete('/patients/:id', verifyToken, isAdmin, PatientController.delete);
+router.delete('/patients/:id', verifyToken, authorizeRoles('admin', 'recepcionista'), PatientController.delete);
 
 module.exports = router;

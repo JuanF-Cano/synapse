@@ -18,12 +18,26 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// Verificar si puede crear usuarios
-const isAdmin = (req, res, next) => {
-  if (!req.user.roles.includes('admin') && !req.user.roles.includes('recepcionista')) {
-    return res.status(403).json({ error: 'Acceso denegado' });
-  }
-  next();
+// Verificacion de roles
+const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+
+    if (!req.user || !req.user.roles) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const hasRole = req.user.roles.some(role =>
+      allowedRoles.includes(role)
+    );
+
+    if (!hasRole) {
+      return res.status(403).json({
+        error: 'No tienes permisos para esta acción'
+      });
+    }
+
+    next();
+  };
 };
 
-module.exports = { verifyToken, isAdmin };
+module.exports = { verifyToken, authorizeRoles };
