@@ -31,7 +31,7 @@ const AuthService = {
         roles
       },
       process.env.JWT_SECRET,
-      { expiresIn: '8h' }
+      { expiresIn: '4h' }
     );
 
     return { user, token };

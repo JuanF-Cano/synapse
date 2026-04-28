@@ -18,9 +18,9 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// Verificar si es administrador
+// Verificar si puede crear usuarios
 const isAdmin = (req, res, next) => {
-  if (!req.user.roles.includes('admin')) {
+  if (!req.user.roles.includes('admin') && !req.user.roles.includes('recepcionista')) {
     return res.status(403).json({ error: 'Acceso denegado' });
   }
   next();
