@@ -79,7 +79,9 @@ const UserController = {
   async update(req, res) {
     try {
       const id_usuario = Number(req.params.id);
-      const updated = await UserService.updateUser(req.user, id_usuario, req.body || {});
+      console.log('Headers:', req.headers);
+      console.log('Body raw:', req.body);
+      const updated = await UserService.updatePassword(req.user, id_usuario, req.body);
       res.status(200).json({ message: 'Usuario actualizado', user: updated });
     } catch (error) {
       res.status(400).json({ error: error.message });

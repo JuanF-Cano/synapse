@@ -138,15 +138,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function api(path, options = {}) {
-    const headers = {
-      Authorization: `Bearer ${state.token}`,
-      ...(options.headers || {})
-    };
-
-    return window.Synapse.request(path, {
-      ...options,
-      headers
-    });
+    console.log('Synapse al cargar:', typeof Synapse);
+    return fetch(`${Synapse.API_BASE_URL}${path}`, {
+      method: options.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${state.token}`,
+        ...(options.headers || {})
+      },
+      body: options.body
+    }).then(res => res.json());
   }
 
   async function loadBaseData() {
@@ -983,6 +984,9 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const updated = await api(`/users/${state.user.id}`, {
           method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(payload)
         });
 
