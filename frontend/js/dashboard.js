@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
       appointments: [],
       doctors: [],
       patients: [],
+      users: [],
+      receptionists: [],
       treatments: [],
       facturas: []
     },
@@ -37,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'assign-appointments',
     'register-users',
     'manage-users',
+    'reports',
     'treatment-prices',
     'medical-history',
     'edit-history',
@@ -133,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function api(path, options = {}) {
     console.log('Synapse al cargar:', typeof Synapse);
-    return fetch(`${Synapse.API_BASE_URL}${path}`, {
+    const response = await fetch(`${Synapse.API_BASE_URL}${path}`, {
       method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -141,23 +144,39 @@ document.addEventListener('DOMContentLoaded', () => {
         ...(options.headers || {})
       },
       body: options.body
-    }).then(res => res.json());
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || payload?.message || `HTTP ${response.status}`);
+    }
+
+    return payload;
   }
 
   async function loadBaseData() {
+    const today = new Date().toISOString().slice(0, 10);
     const requests = [
       api('/appointments').catch(() => []),
-      api('/doctors').catch(() => []),
-      api('/staff').catch(() => []),
+      api(`/doctors/availability?date=${today}`).catch(() => []),
       api('/patients').catch(() => []),
+      api('/users').catch(() => ({ users: [] })),
       api('/treatments').catch(() => []),
       api('/facturas').catch(() => [])
     ];
 
-    const [appointments, doctors, patients, treatments, facturas] = await Promise.all(requests);
+    const [appointments, availability, patients, usersPayload, treatments, facturas] = await Promise.all(requests);
     state.data.appointments = Array.isArray(appointments) ? appointments : [];
-    state.data.doctors = Array.isArray(doctors) ? doctors : [];
+    state.data.doctors = Array.isArray(availability)
+      ? availability
+          .map((item) => item?.doctor)
+          .filter((doctor) => doctor && doctor.id_usuario)
+      : [];
     state.data.patients = Array.isArray(patients) ? patients : [];
+    state.data.users = Array.isArray(usersPayload?.users) ? usersPayload.users : [];
+    state.data.receptionists = state.data.users.filter((user) =>
+      Array.isArray(user?.roles) && user.roles.includes('recepcionista')
+    );
     state.data.treatments = Array.isArray(treatments) ? treatments : [];
     state.data.facturas = Array.isArray(facturas) ? facturas : [];
   }
@@ -212,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'register-users', label: 'Gestion de usuarios' },
         { id: 'doctors-availability', label: 'Disponibilidad medica' },
         { id: 'assign-appointments', label: 'Citas' },
+        { id: 'reports', label: 'Reportes' },
         { id: 'treatment-prices', label: 'Tratamientos y costos' },
         { id: 'medical-history', label: 'Historias clinicas' },
         { id: 'all-bills', label: 'Facturacion' }
@@ -269,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <summary>Facturacion</summary>
             <div class="admin-group-items">
               <button type="button" class="sidebar-link ${state.activeView === 'all-bills' ? 'active' : ''}" data-view="all-bills">Facturacion</button>
+              <button type="button" class="sidebar-link ${state.activeView === 'reports' ? 'active' : ''}" data-view="reports">Reportes</button>
             </div>
           </details>
         </div>
@@ -391,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function renderAdminDashboard() {
     const doctors = state.data.doctors || [];
-    const receptionists = state.data.users?.filter((u) => u.roles?.includes('recepcionista')) || [];
+    const receptionists = state.data.receptionists || [];
     const patients = state.data.patients || [];
 
     return `
@@ -497,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        const receptionist = state.data.users?.find((u) => u.id_usuario === receptionistId);
+        const receptionist = state.data.receptionists.find((u) => u.id_usuario === receptionistId);
         bodyDiv.innerHTML = `
           <tr><th>Nombre</th><td>${receptionist?.nombre || '-'} ${receptionist?.apellido || ''}</td></tr>
           <tr><th>Correo</th><td>${receptionist?.email || '-'}</td></tr>
@@ -534,55 +555,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderDoctorsAvailability() {
-    const today = new Date().toISOString().slice(0, 10);
+    const todayInput = new Date().toISOString().slice(0, 10);
 
     return `
       ${renderGreetingCard()}
       <div class="dashboard-card mb-3">
-        <h2 class="h5 mb-2">Disponibilidad de médicos</h2>
-        <p class="dashboard-muted mb-3">Capacidad diaria por médico: 10 citas.</p>
-
+        <h2 class="h5 mb-2">Disponibilidad de medicos</h2>
+        <p class="dashboard-muted mb-3">Capacidad diaria por medico: 10 citas.</p>
         <div class="d-flex gap-2 align-items-center mb-3">
           <label for="availabilityDate" class="form-label mb-0">Fecha</label>
-          <input type="date" id="availabilityDate" class="form-control synapse-input" value="${today}" style="max-width: 220px;">
+          <input type="date" id="availabilityDate" class="form-control synapse-input" value="${todayInput}" style="max-width: 220px;">
           <button type="button" class="btn btn-nav-secondary btn-sm" id="refreshAvailabilityBtn">Actualizar</button>
         </div>
-
         <div class="table-responsive">
-          <table class="table dashboard-table mb-0" id="availabilityTable">
-            <tbody>
-              <tr><td>Cargando disponibilidad...</td></tr>
-            </tbody>
-          </table>
+          <table class="table dashboard-table mb-0" id="availabilityTable"></table>
         </div>
       </div>
-    `;
-  }
-
-  async function loadAvailability() {
-    const date = document.getElementById('availabilityDate').value;
-
-    const data = await api(`/doctors/availability?date=${date}`);
-
-    const table = document.getElementById('availabilityTable');
-
-    table.innerHTML = `
-      <thead>
-        <tr>
-          <th>Médico</th>
-          <th>Ocupadas</th>
-          <th>Disponibles</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${data.map(d => `
-          <tr>
-            <td>${d.doctor.nombre}</td>
-            <td>${d.ocupadas}</td>
-            <td>${d.disponibles}</td>
-          </tr>
-        `).join('')}
-      </tbody>
     `;
   }
 
@@ -693,19 +681,31 @@ document.addEventListener('DOMContentLoaded', () => {
       ${renderGreetingCard()}
       <div class="dashboard-card">
         <h2 class="h5 mb-2">Precios de tratamientos</h2>
+        <p class="dashboard-muted mb-3">La API actual permite crear y listar tratamientos. La edicion directa de costo no esta disponible en backend.</p>
+        <form id="createTreatmentForm" class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label" for="treatmentDescription">Descripcion</label>
+            <input id="treatmentDescription" class="form-control synapse-input" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="treatmentCost">Costo</label>
+            <input id="treatmentCost" class="form-control synapse-input" type="number" min="0" step="0.01" required>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-nav-primary w-100">Crear</button>
+          </div>
+        </form>
         <div class="table-responsive">
           <table class="table dashboard-table mb-0">
-            <thead><tr><th>Tratamiento</th><th>Descripcion</th><th>Costo actual</th><th>Nuevo costo</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>ID</th><th>Descripcion</th><th>Costo</th></tr></thead>
             <tbody id="treatmentPricesBody">
               ${state.data.treatments.map((t) => `
-                <tr data-treatment="${t.id_tratamiento}">
-                  <td><strong>${t.nombre || '-'}</strong></td>
+                <tr>
+                  <td>${t.id_tratamiento || '-'}</td>
                   <td>${t.descripcion || '-'}</td>
                   <td>${formatCOP(t.costo || 0)}</td>
-                  <td><input type="number" class="form-control synapse-input form-control-sm treatment-price-input" placeholder="Nuevo costo" min="0" step="0.01" style="max-width: 150px;"></td>
-                  <td><button type="button" class="btn btn-sm btn-nav-primary update-treatment-btn" data-id="${t.id_tratamiento}">Actualizar</button></td>
                 </tr>
-              `).join('') || '<tr><td colspan="5">No hay tratamientos.</td></tr>'}
+              `).join('') || '<tr><td colspan="3">No hay tratamientos.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -714,36 +714,83 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function hydrateTreatmentPrices() {
-    const body = document.getElementById('treatmentPricesBody');
-    if (!body) return;
+    const form = document.getElementById('createTreatmentForm');
+    if (!form) {
+      return;
+    }
 
-    body.querySelectorAll('.update-treatment-btn').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const treatmentId = Number(button.dataset.id);
-        const row = body.querySelector(`tr[data-treatment="${treatmentId}"]`);
-        const input = row.querySelector('.treatment-price-input');
-        const newPrice = Number(input.value);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
 
-        if (!Number.isFinite(newPrice) || newPrice < 0) {
-          window.Synapse.showToast('Ingresa un costo válido', 'info');
-          return;
-        }
+      const descripcion = document.getElementById('treatmentDescription').value.trim();
+      const costo = Number(document.getElementById('treatmentCost').value);
 
-        try {
-          await api(`/treatments/${treatmentId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ costo: newPrice })
-          });
-          window.Synapse.showToast('Costo actualizado correctamente', 'success');
-          input.value = '';
-          await loadBaseData();
-          mainRoot.innerHTML = renderTreatmentPrices();
-          hydrateTreatmentPrices();
-        } catch (error) {
-          window.Synapse.showToast(error.message || 'No se pudo actualizar el costo', 'error');
-        }
-      });
+      if (!descripcion || !Number.isFinite(costo) || costo < 0) {
+        window.Synapse.showToast('Ingresa descripcion y costo validos', 'info');
+        return;
+      }
+
+      try {
+        await api('/treatments', {
+          method: 'POST',
+          body: JSON.stringify({ descripcion, costo })
+        });
+        window.Synapse.showToast('Tratamiento creado correctamente', 'success');
+        await loadBaseData();
+        mainRoot.innerHTML = renderTreatmentPrices();
+        hydrateTreatmentPrices();
+      } catch (error) {
+        window.Synapse.showToast(error.message || 'No se pudo crear el tratamiento', 'error');
+      }
     });
+  }
+
+  async function renderReports() {
+    const totalCitas = state.data.appointments.length;
+    const citasPendientes = state.data.appointments.filter((cita) => String(cita.estado || '').toLowerCase().includes('pend')).length;
+    const citasCanceladas = state.data.appointments.filter((cita) => String(cita.estado || '').toLowerCase().includes('cancel')).length;
+    const totalFacturado = state.data.facturas.reduce((sum, factura) => sum + Number(factura.monto || 0), 0);
+    const totalPendiente = state.data.facturas.reduce((sum, factura) => sum + Number(factura.saldo_pendiente || 0), 0);
+
+    let doctorRows = [];
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const availability = await api(`/doctors/availability?date=${today}`);
+      doctorRows = Array.isArray(availability) ? availability : [];
+    } catch (error) {
+      doctorRows = [];
+    }
+
+    return `
+      ${renderGreetingCard()}
+      <div class="row g-3 mb-3">
+        <div class="col-md-4"><div class="dashboard-card metric-card"><p class="dashboard-muted mb-1">Total citas</p><h2 class="h4 mb-0">${totalCitas}</h2></div></div>
+        <div class="col-md-4"><div class="dashboard-card metric-card"><p class="dashboard-muted mb-1">Citas pendientes</p><h2 class="h4 mb-0">${citasPendientes}</h2></div></div>
+        <div class="col-md-4"><div class="dashboard-card metric-card"><p class="dashboard-muted mb-1">Citas canceladas</p><h2 class="h4 mb-0">${citasCanceladas}</h2></div></div>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6"><div class="dashboard-card metric-card"><p class="dashboard-muted mb-1">Facturado total</p><h2 class="h4 mb-0">${formatCOP(totalFacturado)}</h2></div></div>
+        <div class="col-md-6"><div class="dashboard-card metric-card"><p class="dashboard-muted mb-1">Saldo pendiente total</p><h2 class="h4 mb-0">${formatCOP(totalPendiente)}</h2></div></div>
+      </div>
+      <div class="dashboard-card">
+        <h2 class="h5 mb-3">Disponibilidad medica de hoy</h2>
+        <div class="table-responsive">
+          <table class="table dashboard-table mb-0">
+            <thead><tr><th>Medico</th><th>Especialidad</th><th>Ocupadas</th><th>Disponibles</th></tr></thead>
+            <tbody>
+              ${doctorRows.map((item) => `
+                <tr>
+                  <td>${item.doctor?.nombre || ''} ${item.doctor?.apellido || ''}</td>
+                  <td>${item.doctor?.especialidad || '-'}</td>
+                  <td>${item.ocupadas ?? 0}</td>
+                  <td>${item.disponibles ?? 0}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="4">No hay datos de disponibilidad.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
   }
 
   function renderManageUsers() {
@@ -1225,64 +1272,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('availabilityDate');
     const table = document.getElementById('availabilityTable');
     const refreshBtn = document.getElementById('refreshAvailabilityBtn');
-
-    if (!input || !table) return;
+    if (!input || !table) {
+      return;
+    }
 
     const renderTable = async () => {
       const selectedDate = input.value;
+      if (!selectedDate) {
+        return;
+      }
 
       try {
-        table.innerHTML = `
-          <tbody>
-            <tr><td>Cargando...</td></tr>
-          </tbody>
-        `;
-
-        const data = await api(`/doctors/availability?date=${selectedDate}`);
-
-        if (!data || data.length === 0) {
-          table.innerHTML = `
-            <tbody>
-              <tr><td colspan="4">No hay datos disponibles.</td></tr>
-            </tbody>
-          `;
-          return;
-        }
+        const availability = await api(`/doctors/availability?date=${selectedDate}`);
+        const rows = Array.isArray(availability) ? availability : [];
 
         table.innerHTML = `
           <thead>
-            <tr>
-              <th>Médico</th>
-              <th>Especialidad</th>
-              <th>Agenda del día</th>
-              <th>Disponibles</th>
-            </tr>
+            <tr><th>Medico</th><th>Especialidad</th><th>Agenda del dia</th><th>Disponibles</th></tr>
           </thead>
           <tbody>
-            ${data.map(d => `
+            ${rows.map((item) => `
               <tr>
-                <td>${d.doctor?.nombre || ''} ${d.doctor?.apellido || ''}</td>
-                <td>${d.doctor?.especialidad || '-'}</td>
-                <td>${d.ocupadas}/10</td>
-                <td>${d.disponibles}</td>
+                <td>${item.doctor?.nombre || ''} ${item.doctor?.apellido || ''}</td>
+                <td>${item.doctor?.especialidad || '-'}</td>
+                <td>${item.ocupadas ?? 0}/10</td>
+                <td>${item.disponibles ?? 0}</td>
               </tr>
-            `).join('')}
+            `).join('') || '<tr><td colspan="4">No hay medicos registrados.</td></tr>'}
           </tbody>
         `;
-
       } catch (error) {
-        table.innerHTML = `
-          <tbody>
-            <tr><td colspan="4">Error al cargar disponibilidad</td></tr>
-          </tbody>
-        `;
-        console.error(error);
+        table.innerHTML = '<thead><tr><th>Medico</th><th>Especialidad</th><th>Agenda del dia</th><th>Disponibles</th></tr></thead><tbody><tr><td colspan="4">No se pudo consultar disponibilidad.</td></tr></tbody>';
+        window.Synapse.showToast(error.message || 'No se pudo consultar disponibilidad', 'error');
       }
     };
 
     input.addEventListener('change', renderTable);
     refreshBtn?.addEventListener('click', renderTable);
-
     renderTable();
   }
 
@@ -1298,37 +1324,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const availabilityMessage = document.getElementById('doctorAvailabilityMessage');
     const feedback = document.getElementById('appointmentFeedback');
 
-    function getAvailableDoctors() {
+    async function getAvailableDoctors() {
       const selectedDate = dateInput.value ? new Date(dateInput.value).toISOString().slice(0, 10) : null;
       const selectedType = typeInput.value;
 
-      const countByDoctor = {};
-      state.data.appointments.forEach((appointment) => {
-        const date = new Date(appointment.fecha).toISOString().slice(0, 10);
-        if (selectedDate && date === selectedDate) {
-          countByDoctor[appointment.medico] = (countByDoctor[appointment.medico] || 0) + 1;
-        }
-      });
+      if (!selectedDate) {
+        doctorInput.innerHTML = '<option value="">Selecciona fecha y hora</option>';
+        availabilityMessage.textContent = 'Selecciona una fecha para consultar disponibilidad.';
+        return;
+      }
 
-      const filtered = state.data.doctors.filter((doctor) => {
-        const name = `${doctor.nombre} ${doctor.apellido}`.trim();
-        const available = 10 - (countByDoctor[name] || 0);
-        if (available <= 0) {
-          return false;
-        }
-        if (selectedType === 'regular') {
-          return true;
-        }
-        return doctor.especialidad === selectedType;
-      });
+      try {
+        const availability = await api(`/doctors/availability?date=${selectedDate}`);
+        const rows = Array.isArray(availability) ? availability : [];
+        const filtered = rows
+          .filter((row) => Number(row.disponibles || 0) > 0)
+          .filter((row) => selectedType === 'regular' || row.doctor?.especialidad === selectedType)
+          .map((row) => row.doctor)
+          .filter(Boolean);
 
-      doctorInput.innerHTML = filtered.length > 0
-        ? filtered.map((doctor) => `<option value="${doctor.id_usuario}">${doctor.nombre} ${doctor.apellido} - ${doctor.especialidad}</option>`).join('')
-        : '<option value="">No hay medicos disponibles</option>';
+        doctorInput.innerHTML = filtered.length > 0
+          ? filtered.map((doctor) => `<option value="${doctor.id_usuario}">${doctor.nombre} ${doctor.apellido} - ${doctor.especialidad || '-'}</option>`).join('')
+          : '<option value="">No hay medicos disponibles</option>';
 
-      availabilityMessage.textContent = filtered.length > 0
-        ? ''
-        : 'No hay medicos disponibles para la seleccion actual.';
+        availabilityMessage.textContent = filtered.length > 0
+          ? ''
+          : 'No hay medicos disponibles para la seleccion actual.';
+      } catch (error) {
+        doctorInput.innerHTML = '<option value="">No se pudo cargar disponibilidad</option>';
+        availabilityMessage.textContent = error.message || 'No se pudo consultar disponibilidad';
+      }
     }
 
     dateInput.addEventListener('change', getAvailableDoctors);
@@ -1364,34 +1389,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hydrateRegisterUsers() {
     const form = document.getElementById('registerUserForm');
-    if (!form) return;
+    if (!form) {
+      return;
+    }
 
     const feedback = document.getElementById('registerFeedback');
     const roleSelect = document.getElementById('newRole');
     const extraFields = document.getElementById('newRoleExtras');
-
     const roleExtras = {
       numeroLicencia: document.getElementById('newNumeroLicencia'),
-      idEspecialidad: document.getElementById('newIdEspecialidad'),
-      idZona: document.getElementById('newIdZona')
+      idEspecialidad: document.getElementById('newIdEspecialidad')
     };
 
     const toggleRoleExtras = () => {
       const role = Number(roleSelect.value);
-
-      const showStaffExtras = [1, 2, 3].includes(role);
       const showDoctorExtras = role === 2;
+      const showStaffExtras = role === 1 || role === 2 || role === 3;
 
       extraFields.classList.toggle('d-none', !showStaffExtras);
-
-      roleExtras.idZona.closest('.col-md-6')
-        .classList.toggle('d-none', !showStaffExtras);
-
-      roleExtras.numeroLicencia.closest('.col-md-6')
-        .classList.toggle('d-none', !showDoctorExtras);
-
-      roleExtras.idEspecialidad.closest('.col-md-6')
-        .classList.toggle('d-none', !showDoctorExtras);
+      roleExtras.numeroLicencia.closest('.col-md-6').classList.toggle('d-none', !showDoctorExtras);
+      roleExtras.idEspecialidad.closest('.col-md-6').classList.toggle('d-none', !showDoctorExtras);
     };
 
     roleSelect?.addEventListener('change', toggleRoleExtras);
@@ -1404,47 +1421,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const role = Number(roleSelect.value);
       const extras = {};
 
-      // =========================
-      // STAFF → necesita zona
-      // =========================
-      if ([1, 2, 3].includes(role)) {
-        const idZona = Number(roleExtras.idZona.value);
-
-        if (!Number.isFinite(idZona) || idZona <= 0) {
-          feedback.textContent = 'Zona requerida para personal.';
-          return;
-        }
-
-        extras.id_zona = idZona;
-      }
-
-      // =========================
-      // MÉDICO → necesita extras
-      // =========================
       if (role === 2) {
         const numeroLicencia = roleExtras.numeroLicencia.value.trim();
         const idEspecialidad = Number(roleExtras.idEspecialidad.value);
-
         if (!numeroLicencia || !Number.isFinite(idEspecialidad) || idEspecialidad <= 0) {
           feedback.textContent = 'Para medico, completa numero de licencia y especialidad.';
           return;
         }
-
         extras.numero_licencia = numeroLicencia;
         extras.id_especialidad = idEspecialidad;
       }
 
-      // =========================
-      // PAYLOAD
-      // =========================
       const payload = {
         nombre: document.getElementById('newNombre').value.trim(),
         apellido: document.getElementById('newApellido').value.trim(),
         email: document.getElementById('newEmail').value.trim(),
         documento: document.getElementById('newDocumento').value.trim(),
         password: document.getElementById('newPassword').value.trim(),
-        roles: [role],
-        extras
+        roles: [role]
       };
 
       const telefono = document.getElementById('newTelefono').value.trim();
@@ -1455,17 +1449,19 @@ document.addEventListener('DOMContentLoaded', () => {
       if (fecha_nacimiento) payload.fecha_nacimiento = fecha_nacimiento;
       if (direccion) payload.direccion = direccion;
 
+      if (Object.keys(extras).length > 0) {
+        payload.extras = extras;
+      }
+
       try {
         await api('/users', {
           method: 'POST',
           body: JSON.stringify(payload)
         });
-
         window.Synapse.showToast('Usuario registrado correctamente', 'success');
         feedback.textContent = 'Usuario registrado.';
         form.reset();
         toggleRoleExtras();
-
       } catch (error) {
         window.Synapse.showToast(error.message || 'No se pudo registrar', 'error');
         feedback.textContent = error.message || 'No se pudo registrar.';
@@ -1482,7 +1478,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hydrateManageUsers() {
     const body = document.getElementById('manageUsersBody');
-    if (!body) return;
+    if (!body) {
+      return;
+    }
 
     const refreshBtn = document.getElementById('refreshUsersBtn');
 
@@ -1495,18 +1493,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         body.innerHTML = users.map((user) => {
           const roles = Array.isArray(user.roles) ? user.roles : [];
-
           const removableRoles = roles.map((roleName) => {
             const roleId = window.Synapse.ROLE_ID_MAP[roleName] || '';
-            return `
-              <button type="button"
-                class="btn btn-sm btn-outline-danger remove-role-btn"
-                data-user="${user.id_usuario}"
-                data-role-id="${roleId}"
-                data-role-name="${roleName}">
-                ${roleName}
-              </button>
-            `;
+            return `<button type="button" class="btn btn-sm btn-outline-danger remove-role-btn" data-user="${user.id_usuario}" data-role-id="${roleId}" data-role-name="${roleName}">${roleName}</button>`;
           }).join(' ');
 
           const availableRoles = Object.keys(window.Synapse.ROLE_ID_MAP)
@@ -1524,13 +1513,11 @@ document.addEventListener('DOMContentLoaded', () => {
               <td>${roles.join(', ') || '-'}</td>
               <td>
                 <div class="d-flex gap-2">
-                  <select class="form-select form-select-sm add-role-select" data-user="${user.id_usuario}">
+                  <select class="form-select synapse-input form-select-sm add-role-select" data-user="${user.id_usuario}" style="min-width: 150px;">
                     <option value="">Selecciona</option>
                     ${roleOptions}
                   </select>
-                  <button type="button" class="btn btn-sm btn-primary add-role-btn" data-user="${user.id_usuario}">
-                    Agregar
-                  </button>
+                  <button type="button" class="btn btn-sm btn-nav-primary add-role-btn" data-user="${user.id_usuario}">Agregar</button>
                 </div>
               </td>
               <td><div class="d-flex flex-wrap gap-1">${removableRoles || '-'}</div></td>
@@ -1538,97 +1525,67 @@ document.addEventListener('DOMContentLoaded', () => {
           `;
         }).join('') || '<tr><td colspan="5">No hay usuarios.</td></tr>';
 
-        // =========================
-        // AGREGAR ROL
-        // =========================
         body.querySelectorAll('.add-role-btn').forEach((button) => {
           button.addEventListener('click', async () => {
-
             const userId = Number(button.dataset.user);
             const select = body.querySelector(`.add-role-select[data-user="${userId}"]`);
             const roleName = select?.value;
             const roleId = window.Synapse.ROLE_ID_MAP[roleName];
 
             if (!roleId) {
-              window.Synapse.showToast('Selecciona un rol', 'info');
+              window.Synapse.showToast('Selecciona un rol para agregar', 'info');
               return;
             }
 
             const extras = {};
 
+            if (roleName === 'medico') {
+              const numeroLicencia = prompt('Número de licencia del médico:');
+              const idEspecialidad = prompt('ID de especialidad:');
+
+              if (!numeroLicencia || !idEspecialidad) {
+                window.Synapse.showToast('Licencia y especialidad son requeridas para médicos', 'info');
+                return;
+              }
+
+              extras.numero_licencia = numeroLicencia;
+              extras.id_especialidad = Number(idEspecialidad);
+            }
+
             try {
-              // STAFF necesita zona
-              if (['medico', 'admin', 'recepcionista'].includes(roleName)) {
-                const idZona = prompt('ID de zona:');
-                if (!idZona) throw new Error('Zona requerida');
-
-                extras.id_zona = Number(idZona);
-              }
-
-              // MÉDICO necesita más datos
-              if (roleName === 'medico') {
-                const numeroLicencia = prompt('Número de licencia:');
-                const idEspecialidad = prompt('ID de especialidad:');
-
-                if (!numeroLicencia || !idEspecialidad) {
-                  throw new Error('Licencia y especialidad requeridas');
-                }
-
-                extras.numero_licencia = numeroLicencia;
-                extras.id_especialidad = Number(idEspecialidad);
-              }
-
-              await api(`/users/assign-role`, {
+              await api('/users/assign-role', {
                 method: 'POST',
-                body: JSON.stringify({
-                  id_usuario: userId,
-                  id_tipo: roleId,
-                  extras
-                })
+                body: JSON.stringify({ id_usuario: userId, id_tipo: roleId, extras })
               });
-
               window.Synapse.showToast('Rol agregado correctamente', 'success');
-              await loadUsers();
-
+              location.reload();
             } catch (error) {
-              window.Synapse.showToast(error.message || 'Error al agregar rol', 'error');
+              window.Synapse.showToast(error.message || 'No se pudo agregar el rol', 'error');
             }
           });
         });
 
-        // =========================
-        // REMOVER ROL
-        // =========================
         body.querySelectorAll('.remove-role-btn').forEach((button) => {
           button.addEventListener('click', async () => {
-
             const userId = Number(button.dataset.user);
             const roleId = Number(button.dataset.roleId);
             const roleName = button.dataset.roleName;
 
-            if (!confirm(`¿Seguro que quieres quitar el rol ${roleName}?`)) return;
-
             try {
-              await api(`/users/remove-role`, {
+              await api('/users/remove-role', {
                 method: 'POST',
-                body: JSON.stringify({
-                  id_usuario: userId,
-                  id_tipo: roleId
-                })
+                body: JSON.stringify({ id_usuario: userId, id_tipo: roleId })
               });
-
               window.Synapse.showToast(`Rol ${roleName} removido`, 'success');
-              await loadUsers();
-
+              location.reload();
             } catch (error) {
-              window.Synapse.showToast(error.message || 'Error al remover rol', 'error');
+              window.Synapse.showToast(error.message || 'No se pudo remover el rol', 'error');
             }
           });
         });
-
       } catch (error) {
-        body.innerHTML = '<tr><td colspan="5">Error cargando usuarios</td></tr>';
-        window.Synapse.showToast(error.message || 'Error', 'error');
+        body.innerHTML = '<tr><td colspan="5">No se pudo cargar la lista de usuarios.</td></tr>';
+        window.Synapse.showToast(error.message || 'No se pudo cargar la lista de usuarios', 'error');
       }
     };
 
@@ -1661,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await api('/appointments', {
           method: 'POST',
           body: JSON.stringify({
-            id_paciente: Number(state.user.id),
+            id_paciente: Number(state.user.id || state.user.id_usuario),
             id_medico: doctorId,
             fecha: new Date(dateTime).toISOString(),
             motivo: reason,
@@ -1731,9 +1688,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
-        await api(`/users/${userId}/roles`, {
+        await api('/users/assign-role', {
           method: 'POST',
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ id_usuario: userId, ...payload })
         });
         feedback.textContent = 'Rol cambiado correctamente.';
       } catch (error) {
@@ -1945,6 +1902,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (view === 'manage-users') {
       mainRoot.innerHTML = renderManageUsers();
       hydrateManageUsers();
+      return;
+    } else if (view === 'reports') {
+      mainRoot.innerHTML = await renderReports();
       return;
     } else if (view === 'book-appointment') {
       mainRoot.innerHTML = renderBookAppointment();
