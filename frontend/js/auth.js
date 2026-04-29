@@ -40,8 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showError(message) {
-    authError.textContent = message;
-    authError.classList.remove('d-none');
+    window.Synapse.showToast(message, 'error');
+    authError.classList.add('d-none');
+    authError.textContent = '';
     authSuccess.classList.add('d-none');
   }
 
