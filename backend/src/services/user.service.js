@@ -1,3 +1,4 @@
+const { runInContext } = require('vm');
 const UserModel = require('../models/user.model');
 const bcrypt = require('bcrypt');
 
@@ -23,14 +24,20 @@ const UserService = {
       documento
     });
 
+    let assignedRoles = [];
+
     // Asignar roles
     if (roles && roles.length > 0) {
       for (let role of roles) {
         await UserModel.assignRole(user.id_usuario, role);
+        assignedRoles.push(role);
       }
     }
 
-    return user;
+    return {
+      ...user,
+      roles: assignedRoles
+    };
   }
 
 };
