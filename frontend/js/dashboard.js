@@ -129,13 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return Boolean(compare && (compare === full || compare.includes(first)));
   }
 
-  function getDoctorZone() {
-    const me = state.data.doctors.find((doctor) => {
-      const full = `${doctor.nombre || ''} ${doctor.apellido || ''}`.trim().toLowerCase();
-      return full === getCurrentUserDisplayName().toLowerCase() || (doctor.nombre || '').toLowerCase() === (state.user.firstName || '').toLowerCase();
-    });
-    return me?.zona || null;
-  }
+
 
   async function api(path, options = {}) {
     console.log('Synapse al cargar:', typeof Synapse);
@@ -321,17 +315,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderGreetingCard(extraContent = '') {
-    const zone = (state.activeRole === 'medico' || state.activeRole === 'recepcionista') ? getDoctorZone() : null;
-    const zoneHtml = zone
-      ? `<p class="mb-0 dashboard-muted">Zona: <strong>${zone}</strong></p>`
-      : ((state.activeRole === 'medico' || state.activeRole === 'recepcionista')
-        ? '<p class="mb-0 dashboard-muted">Zona: No disponible en la API actual.</p>'
-        : '');
-
     return `
       <div class="dashboard-card mb-3">
         <h1 class="h4 mb-2">Hola, ${getCurrentUserDisplayName()}.</h1>
-        ${zoneHtml}
         ${extraContent}
       </div>
     `;
@@ -643,10 +629,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="col-12 d-none" id="newRoleExtras">
             <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label" for="newIdZona">Zona</label>
-                <input class="form-control synapse-input" id="newIdZona" type="number" min="1" placeholder="Opcional para staff">
-              </div>
               <div class="col-md-6">
                 <label class="form-label" for="newNumeroLicencia">Numero de licencia</label>
                 <input class="form-control synapse-input" id="newNumeroLicencia" placeholder="Requerido para medico">
@@ -1330,7 +1312,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const roleSelect = document.getElementById('newRole');
     const extraFields = document.getElementById('newRoleExtras');
     const roleExtras = {
-      idZona: document.getElementById('newIdZona'),
       numeroLicencia: document.getElementById('newNumeroLicencia'),
       idEspecialidad: document.getElementById('newIdEspecialidad')
     };
@@ -1343,7 +1324,6 @@ document.addEventListener('DOMContentLoaded', () => {
       extraFields.classList.toggle('d-none', !showStaffExtras);
       roleExtras.numeroLicencia.closest('.col-md-6').classList.toggle('d-none', !showDoctorExtras);
       roleExtras.idEspecialidad.closest('.col-md-6').classList.toggle('d-none', !showDoctorExtras);
-      roleExtras.idZona.closest('.col-md-6').classList.toggle('d-none', !(role === 1 || role === 2 || role === 3));
     };
 
     roleSelect?.addEventListener('change', toggleRoleExtras);
@@ -1355,13 +1335,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const role = Number(roleSelect.value);
       const extras = {};
-
-      if (role === 1 || role === 2 || role === 3) {
-        const idZona = Number(roleExtras.idZona.value);
-        if (Number.isFinite(idZona) && idZona > 0) {
-          extras.id_zona = idZona;
-        }
-      }
 
       if (role === 2) {
         const numeroLicencia = roleExtras.numeroLicencia.value.trim();
@@ -1440,8 +1413,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<button type="button" class="btn btn-sm btn-outline-danger remove-role-btn" data-user="${user.id_usuario}" data-role-id="${roleId}" data-role-name="${roleName}">${roleName}</button>`;
           }).join(' ');
 
-          const roleOptions = Object.keys(window.Synapse.ROLE_ID_MAP)
+          const availableRoles = Object.keys(window.Synapse.ROLE_ID_MAP)
             .filter((roleName) => !roles.includes(roleName))
+            .filter((roleName) => state.activeRole === 'admin' || roleName !== 'admin');
+
+          const roleOptions = availableRoles
             .map((roleName) => `<option value="${roleName}">${roleName}</option>`)
             .join('');
 
@@ -1481,7 +1457,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (roleName === 'medico') {
               const numeroLicencia = prompt('Número de licencia del médico:');
               const idEspecialidad = prompt('ID de especialidad:');
-              const idZona = prompt('ID de zona (opcional):');
 
               if (!numeroLicencia || !idEspecialidad) {
                 window.Synapse.showToast('Licencia y especialidad son requeridas para médicos', 'info');
@@ -1490,9 +1465,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
               extras.numero_licencia = numeroLicencia;
               extras.id_especialidad = Number(idEspecialidad);
-              if (idZona) {
-                extras.id_zona = Number(idZona);
-              }
             }
 
             try {
@@ -1501,7 +1473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ id_tipo: roleId, extras })
               });
               window.Synapse.showToast('Rol agregado correctamente', 'success');
-              await loadUsers();
+              location.reload();
             } catch (error) {
               window.Synapse.showToast(error.message || 'No se pudo agregar el rol', 'error');
             }
@@ -1587,7 +1559,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const roleSelect = document.getElementById('roleAssignType');
     const extraFields = document.getElementById('roleAssignExtras');
     const extras = {
-      idZona: document.getElementById('roleAssignIdZona'),
       numeroLicencia: document.getElementById('roleAssignNumeroLicencia'),
       idEspecialidad: document.getElementById('roleAssignIdEspecialidad')
     };
@@ -1599,7 +1570,6 @@ document.addEventListener('DOMContentLoaded', () => {
       extraFields.classList.toggle('d-none', !showStaffExtras);
       extras.numeroLicencia.closest('.col-md-6').classList.toggle('d-none', !showDoctorExtras);
       extras.idEspecialidad.closest('.col-md-6').classList.toggle('d-none', !showDoctorExtras);
-      extras.idZona.closest('.col-md-6').classList.toggle('d-none', !(role === 1 || role === 2 || role === 3));
     };
 
     roleSelect?.addEventListener('change', toggle);
@@ -1617,10 +1587,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const payload = { id_tipo: role, extras: {} };
-      const idZona = Number(extras.idZona.value);
-      if (Number.isFinite(idZona) && idZona > 0) {
-        payload.extras.id_zona = idZona;
-      }
 
       if (role === 2) {
         const numeroLicencia = extras.numeroLicencia.value.trim();

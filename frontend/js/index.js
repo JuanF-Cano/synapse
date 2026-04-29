@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const themeToggle = document.getElementById('themeToggle');
   const themeToggleIcon = document.getElementById('themeToggleIcon');
   const session = window.Synapse.getSession();
+  const heroLoginBtn = document.getElementById('heroLoginBtn');
+  const heroDashboardBtn = document.getElementById('heroDashboardBtn');
 
   function renderTheme(theme) {
     const isDark = theme === 'dark';
@@ -24,6 +26,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   renderTheme(window.Synapse.getTheme());
+
+  if (session?.user) {
+  guestActions?.classList.add('d-none');
+  userActions?.classList.remove('d-none');
+  userActions?.classList.add('d-flex');
+
+  // 👇 HERO
+  heroLoginBtn?.classList.add('d-none');
+  heroDashboardBtn?.classList.remove('d-none');
+
+  if (userGreetingName) {
+    userGreetingName.textContent = session.user.fullName || 'Usuario';
+  }
+} else {
+  guestActions?.classList.remove('d-none');
+  guestActions?.classList.add('d-flex');
+  userActions?.classList.add('d-none');
+  userActions?.classList.remove('d-flex');
+
+  // 👇 HERO
+  heroLoginBtn?.classList.remove('d-none');
+  heroDashboardBtn?.classList.add('d-none');
+}
 
   if (session?.user) {
     guestActions?.classList.add('d-none');
