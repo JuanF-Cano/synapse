@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ReportController = require('../controllers/report.controller');
-const { verifyToken, authorizeRoles } = require('../middlewares/auth');
+const { verifyToken, authorizeRoles } = require('../middlewares/auth.middleware');
 
 router.get('/appointments/status', verifyToken, authorizeRoles('admin'), ReportController.appointmentsByStatus);
 
