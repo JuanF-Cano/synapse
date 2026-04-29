@@ -16,30 +16,35 @@ SYNAPSE is a web application designed for the digital management of clinical and
 synapse/
 │
 ├── backend/
+│   ├── database/
+│   │   ├── schema.sql
+│   │   └── seed.sql
 │   ├── src/
 │   │   ├── config/
 │   │   ├── controllers/
-│   │   ├── routes/
+│   │   ├── middlewares/
 │   │   ├── models/
+│   │   ├── routes/
+│   │   ├── scripts/
 │   │   ├── services/
 │   │   └── app.js
 │   │
 │   ├── package.json
+│   ├── .env.example
 │   └── .env
 │
 ├── frontend/
-│   ├── pages/
-│   ├── js/
 │   ├── css/
+│   ├── images/
+│   ├── js/
+│   ├── pages/
 │   └── index.html
 │
-├── database/
-│   ├── schema.sql
-│   ├── seed.sql
-│
 ├── docs/
-│   └── semantica.pdf
+│   └── Semantica_SYNAPSE.pdf
 │
+├── .gitignore
+├── structure.txt
 └── README.md
 ```
 
@@ -182,4 +187,118 @@ erDiagram
     FACTURAS }o--|| ESTADOS_FACTURA : estado
 ```
 
+---
+
+# Initial Setup
+Follow these steps to run the SYNAPSE project locally.
+
+## 1. Clone the repository
+```bash
+git clone https://github.com/JuanF-Cano/synapse
+cd synapse
+```
+
+## 2. Initialize the Database
+```bash
+cd backend
+npm install
+npm run db:init
+```
+This will:
+
+- Create all tables (`schema.sql`)
+- Insert initial data (`seed.sql`)
+
+## 3. Configure Environment Variables
+Create a `.env` file inside `/backend`:
+```env
+DB_USER=postgres
+DB_HOST=localhost
+DB_NAME=synapse
+DB_PASSWORD=your_password
+DB_PORT=5432
+
+JWT_SECRET=your_secret_key
+PORT=3000
+```
+
+## 4. Run the Backend
+```bash
+npm run dev
+```
+Backend will be available at: `http://localhost:3000/api`
+
+## 5. Run the Frontend
+Go to back root:
+```bash
+cd ..
+cd frontend
+```
+
+### Option A — Open directly
+Open in browser: 
+```bash
+index.html
+```
+
+Exmaple:
+```bash
+C:/.../synapse/frontend/index.html
+```
+
+### Option B — Run local server (recommended)
+```bash
+npx serve .
+```
+Then open:
+```bash
+http://localhost:3000
+```
+Or on another port if port 3000 it's busy.
+
+---
+
+# API Documentation
+The API documentation is available at:
+```bash
+http://localhost:3000/api/docs
+```
+
+---
+
+# Authentication & Roles
+
+The system supports multiple roles:
+
+Admin
+Medico
+Recepcionista
+Paciente
+
+Each role has different permissions within the system.
+
+---
+
+# Features
+User management with roles
+Appointment scheduling system
+Medical records (histories)
+Treatments management
+Billing and payments
+Doctor availability tracking
+Administrative reports
+
+---
+
+# API Overview
+Main endpoints:
+
+```bash
+/api/auth
+/api/users
+/api/doctors
+/api/appointments
+/api/reports
+/api/docs
+```
 ---
