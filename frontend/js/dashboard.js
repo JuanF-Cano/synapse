@@ -225,7 +225,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     return [
       { id: 'overview', label: 'Dashboard' },
-      { id: 'book-appointment', label: 'Agendar cita' },
       { id: 'full-history', label: 'Historia completa' },
       { id: 'all-bills', label: 'Todas mis facturas' },
       { id: 'pending-bills', label: 'Facturas pendientes' }
@@ -558,6 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="d-flex gap-2 align-items-center mb-3">
           <label for="availabilityDate" class="form-label mb-0">Fecha</label>
           <input type="date" id="availabilityDate" class="form-control synapse-input" value="${todayInput}" style="max-width: 220px;">
+          <button type="button" class="btn btn-nav-secondary btn-sm" id="refreshAvailabilityBtn">Actualizar</button>
         </div>
         <div class="table-responsive">
           <table class="table dashboard-table mb-0" id="availabilityTable"></table>
@@ -665,7 +665,9 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
       <div class="dashboard-card mt-3">
         <h2 class="h5 mb-2">Roles de usuarios existentes</h2>
-        <p class="dashboard-muted mb-0">Usa la vista <strong>Gestionar usuarios</strong> para agregar o remover roles sin escribir IDs manualmente.</p>
+
+        <p class="dashboard-muted mb-3">Para agregar o remover roles de usuarios existentes, ve a la siguiente vista:</p>
+        <button type="button" class="btn btn-nav-primary" id="goToManageUsersBtn">Gestionar usuarios</button>
       </div>
     `;
   }
@@ -675,17 +677,57 @@ document.addEventListener('DOMContentLoaded', () => {
       ${renderGreetingCard()}
       <div class="dashboard-card">
         <h2 class="h5 mb-2">Precios de tratamientos</h2>
-        <p class="dashboard-muted mb-3">La API actual no incluye endpoint para actualizar precios (PUT/PATCH). Se muestra consulta de costos vigentes.</p>
         <div class="table-responsive">
           <table class="table dashboard-table mb-0">
-            <thead><tr><th>Tratamiento</th><th>Costo actual</th></tr></thead>
-            <tbody>
-              ${state.data.treatments.map((t) => `<tr><td>${t.descripcion}</td><td>${formatCOP(t.costo)}</td></tr>`).join('') || '<tr><td colspan="2">No hay tratamientos.</td></tr>'}
+            <thead><tr><th>Tratamiento</th><th>Descripcion</th><th>Costo actual</th><th>Nuevo costo</th><th>Acciones</th></tr></thead>
+            <tbody id="treatmentPricesBody">
+              ${state.data.treatments.map((t) => `
+                <tr data-treatment="${t.id_tratamiento}">
+                  <td><strong>${t.nombre || '-'}</strong></td>
+                  <td>${t.descripcion || '-'}</td>
+                  <td>${formatCOP(t.costo || 0)}</td>
+                  <td><input type="number" class="form-control synapse-input form-control-sm treatment-price-input" placeholder="Nuevo costo" min="0" step="0.01" style="max-width: 150px;"></td>
+                  <td><button type="button" class="btn btn-sm btn-nav-primary update-treatment-btn" data-id="${t.id_tratamiento}">Actualizar</button></td>
+                </tr>
+              `).join('') || '<tr><td colspan="5">No hay tratamientos.</td></tr>'}
             </tbody>
           </table>
         </div>
       </div>
     `;
+  }
+
+  function hydrateTreatmentPrices() {
+    const body = document.getElementById('treatmentPricesBody');
+    if (!body) return;
+
+    body.querySelectorAll('.update-treatment-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const treatmentId = Number(button.dataset.id);
+        const row = body.querySelector(`tr[data-treatment="${treatmentId}"]`);
+        const input = row.querySelector('.treatment-price-input');
+        const newPrice = Number(input.value);
+
+        if (!Number.isFinite(newPrice) || newPrice < 0) {
+          window.Synapse.showToast('Ingresa un costo válido', 'info');
+          return;
+        }
+
+        try {
+          await api(`/treatments/${treatmentId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ costo: newPrice })
+          });
+          window.Synapse.showToast('Costo actualizado correctamente', 'success');
+          input.value = '';
+          await loadBaseData();
+          mainRoot.innerHTML = renderTreatmentPrices();
+          hydrateTreatmentPrices();
+        } catch (error) {
+          window.Synapse.showToast(error.message || 'No se pudo actualizar el costo', 'error');
+        }
+      });
+    });
   }
 
   function renderManageUsers() {
@@ -1166,6 +1208,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function hydrateAvailabilityTable() {
     const input = document.getElementById('availabilityDate');
     const table = document.getElementById('availabilityTable');
+    const refreshBtn = document.getElementById('refreshAvailabilityBtn');
     if (!input || !table) {
       return;
     }
@@ -1197,6 +1240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     input.addEventListener('change', renderTable);
+    refreshBtn?.addEventListener('click', renderTable);
     renderTable();
   }
 
@@ -1365,6 +1409,13 @@ document.addEventListener('DOMContentLoaded', () => {
         feedback.textContent = error.message || 'No se pudo registrar.';
       }
     });
+
+    const manageUsersBtn = document.getElementById('goToManageUsersBtn');
+    manageUsersBtn?.addEventListener('click', () => {
+      state.activeView = 'manage-users';
+      renderSidebar();
+      renderMain();
+    });
   }
 
   function hydrateManageUsers() {
@@ -1425,10 +1476,29 @@ document.addEventListener('DOMContentLoaded', () => {
               return;
             }
 
+            const extras = {};
+
+            if (roleName === 'medico') {
+              const numeroLicencia = prompt('Número de licencia del médico:');
+              const idEspecialidad = prompt('ID de especialidad:');
+              const idZona = prompt('ID de zona (opcional):');
+
+              if (!numeroLicencia || !idEspecialidad) {
+                window.Synapse.showToast('Licencia y especialidad son requeridas para médicos', 'info');
+                return;
+              }
+
+              extras.numero_licencia = numeroLicencia;
+              extras.id_especialidad = Number(idEspecialidad);
+              if (idZona) {
+                extras.id_zona = Number(idZona);
+              }
+            }
+
             try {
               await api(`/users/${userId}/roles`, {
                 method: 'POST',
-                body: JSON.stringify({ id_tipo: roleId, extras: {} })
+                body: JSON.stringify({ id_tipo: roleId, extras })
               });
               window.Synapse.showToast('Rol agregado correctamente', 'success');
               await loadUsers();
