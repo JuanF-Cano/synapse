@@ -67,10 +67,17 @@ const BillingModel = {
   // Obtener facturas
   async getFacturas() {
     const query = `
-      SELECT f.*, ef.estado
+      SELECT 
+        f.*, 
+        ef.estado,
+        COALESCE(SUM(p.monto), 0) AS total_pagado,
+        GREATEST(f.monto - COALESCE(SUM(p.monto), 0), 0) AS saldo_pendiente
       FROM facturas f
       JOIN estados_factura ef 
-        ON f.id_estado = ef.id_estado;
+        ON f.id_estado = ef.id_estado
+      LEFT JOIN pagos p
+        ON p.id_factura = f.id_factura
+      GROUP BY f.id_factura, ef.estado;
     `;
 
     const result = await pool.query(query);

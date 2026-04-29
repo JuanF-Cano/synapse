@@ -28,6 +28,18 @@ const StaffModel = {
     return result.rows[0];
   },
 
+  // Insertar en personal_administrativo
+  async createAdministrative(id_usuario) {
+    const query = `
+      INSERT INTO personal_administrativo (id_usuario)
+      VALUES ($1)
+      ON CONFLICT (id_usuario) DO NOTHING
+      RETURNING *;
+    `;
+    const result = await pool.query(query, [id_usuario]);
+    return result.rows[0];
+  },
+
   // Obtener médicos
   async getDoctors() {
     const query = `
