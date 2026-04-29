@@ -31,22 +31,22 @@ INSERT INTO especialidades (nombre, descripcion) VALUES
 ('Pediatría', 'Niños');
 
 -- USUARIO PACIENTE EJEMPLO
-INSERT INTO usuarios (nombre, apellido, email, password, documento)
-VALUES ('Paciente', 'Pérez', 'paciente@test.com', '123456', '12345678'); -- crear usuario
-INSERT INTO pacientes (id_usuario) VALUES (1); -- indexar en pacientes
-INSERT INTO usuario_tipo (id_usuario, id_tipo)
-SELECT id_usuario, 4
-FROM usuarios
-WHERE email = 'paciente@test.com'; -- paciente
+--INSERT INTO usuarios (nombre, apellido, email, password, documento)
+--VALUES ('Paciente', 'Pérez', 'paciente@test.com', '123456', '12345678'); -- crear usuario
+--INSERT INTO pacientes (id_usuario) VALUES (1); -- indexar en pacientes
+--INSERT INTO usuario_tipo (id_usuario, id_tipo)
+--SELECT id_usuario, 4
+--FROM usuarios
+--WHERE email = 'paciente@test.com'; -- paciente
 
 -- USUARIO ADMIN/MÉDICO EJEMPLO
-INSERT INTO usuarios (nombre, apellido, email, password)
-VALUES ('Admin', 'Gomez', 'admin@test.com', '123456'); -- crear usuario
-INSERT INTO usuario_tipo (id_usuario, id_tipo)
-SELECT id_usuario, 1
-FROM usuarios
-WHERE email = 'admin@test.com'; -- admin
-INSERT INTO usuario_tipo (id_usuario, id_tipo)
-SELECT id_usuario, 2
-FROM usuarios
-WHERE email = 'admin@test.com'; -- medico
+--INSERT INTO usuarios (nombre, apellido, email, password)
+--VALUES ('Admin', 'Gomez', 'admin@test.com', '123456'); -- crear usuario
+--INSERT INTO usuario_tipo (id_usuario, id_tipo)
+--SELECT id_usuario, 1
+--FROM usuarios
+--WHERE email = 'admin@test.com'; -- admin
+--INSERT INTO usuario_tipo (id_usuario, id_tipo)
+--SELECT id_usuario, 2
+--FROM usuarios
+--WHERE email = 'admin@test.com'; -- medico

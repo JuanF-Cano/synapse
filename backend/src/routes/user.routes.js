@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const UserController = require('../controllers/user.controller');
+const { verifyToken, authorizeRoles } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -52,5 +53,13 @@ const UserController = require('../controllers/user.controller');
  *         description: Usuario creado exitosamente
  */
 router.post('/users', UserController.register);
+
+router.get('/users/me', verifyToken, UserController.me);
+router.get('/users', verifyToken, authorizeRoles('admin', 'recepcionista'), UserController.list);
+
+router.patch('/users/:id', verifyToken, UserController.update);
+
+router.post('/users/:id/roles', verifyToken, authorizeRoles('admin', 'recepcionista'), UserController.assignRole);
+router.delete('/users/:id/roles/:roleId', verifyToken, authorizeRoles('admin', 'recepcionista'), UserController.removeRole);
 
 module.exports = router;
