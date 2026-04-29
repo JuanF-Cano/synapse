@@ -240,6 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     return [
       { id: 'overview', label: 'Dashboard' },
+      { id: 'book-appointment', label: 'Agendar cita' },
       { id: 'full-history', label: 'Historia completa' },
       { id: 'all-bills', label: 'Todas mis facturas' },
       { id: 'pending-bills', label: 'Facturas pendientes' }
@@ -823,6 +824,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderBookAppointment() {
+    const specialtyOptions = [...new Set(state.data.doctors.map((doctor) => doctor.especialidad).filter(Boolean))]
+      .map((spec) => `<option value="${spec}">${spec}</option>`)
+      .join('');
+
     const doctorOptions = state.data.doctors
       .map((doctor) => `<option value="${doctor.id_usuario}">${doctor.nombre} ${doctor.apellido} - ${doctor.especialidad || 'Sin especialidad'}</option>`)
       .join('');
@@ -833,11 +838,19 @@ document.addEventListener('DOMContentLoaded', () => {
         <h2 class="h5 mb-3">Agendar cita</h2>
         <form id="selfAppointmentForm" class="row g-3">
           <div class="col-md-6">
+            <label class="form-label" for="selfAppointmentType">Tipo de cita</label>
+            <select class="form-select synapse-input" id="selfAppointmentType">
+              <option value="regular">Consulta regular</option>
+              ${specialtyOptions}
+            </select>
+          </div>
+          <div class="col-md-6">
             <label class="form-label" for="selfAppointmentDoctor">Medico</label>
             <select class="form-select synapse-input" id="selfAppointmentDoctor" required>
               <option value="">Selecciona medico</option>
               ${doctorOptions}
             </select>
+            <small class="dashboard-muted" id="selfDoctorAvailabilityMessage"></small>
           </div>
           <div class="col-md-6">
             <label class="form-label" for="selfAppointmentDateTime">Fecha y hora</label>
@@ -1599,17 +1612,59 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const dateInput = document.getElementById('selfAppointmentDateTime');
+    const typeInput = document.getElementById('selfAppointmentType');
+    const doctorInput = document.getElementById('selfAppointmentDoctor');
+    const availabilityMessage = document.getElementById('selfDoctorAvailabilityMessage');
     const feedback = document.getElementById('selfAppointmentFeedback');
+
+    async function getAvailableDoctors() {
+      const selectedDate = dateInput.value ? new Date(dateInput.value).toISOString().slice(0, 10) : null;
+      const selectedType = typeInput.value;
+
+      if (!selectedDate) {
+        doctorInput.innerHTML = '<option value="">Selecciona fecha y hora</option>';
+        availabilityMessage.textContent = 'Selecciona una fecha para consultar disponibilidad.';
+        return;
+      }
+
+      try {
+        const availability = await api(`/doctors/availability?date=${selectedDate}`);
+        const rows = Array.isArray(availability) ? availability : [];
+
+        const filtered = rows
+          .filter((row) => Number(row.disponibles || 0) > 0)
+          .filter((row) => selectedType === 'regular' || row.doctor?.especialidad === selectedType)
+          .map((row) => row.doctor)
+          .filter(Boolean);
+
+        doctorInput.innerHTML = filtered.length > 0
+          ? filtered.map((doctor) => `<option value="${doctor.id_usuario}">${doctor.nombre} ${doctor.apellido} - ${doctor.especialidad || '-'}</option>`).join('')
+          : '<option value="">No hay medicos disponibles</option>';
+
+        availabilityMessage.textContent = filtered.length > 0
+          ? ''
+          : 'No hay medicos disponibles para la seleccion actual.';
+      } catch (error) {
+        doctorInput.innerHTML = '<option value="">No se pudo cargar disponibilidad</option>';
+        availabilityMessage.textContent = error.message || 'No se pudo consultar disponibilidad';
+      }
+    }
+
+    dateInput?.addEventListener('change', getAvailableDoctors);
+    typeInput?.addEventListener('change', getAvailableDoctors);
+    getAvailableDoctors();
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       feedback.textContent = '';
 
-      const doctorId = Number(document.getElementById('selfAppointmentDoctor').value);
-      const dateTime = document.getElementById('selfAppointmentDateTime').value;
+      const patientId = Number(state.user.id || state.user.id_usuario);
+      const doctorId = Number(doctorInput.value);
+      const dateTime = dateInput.value;
       const reason = document.getElementById('selfAppointmentReason').value.trim();
 
-      if (!doctorId || !dateTime || !reason) {
+      if (!patientId || !doctorId || !dateTime || !reason) {
         window.Synapse.showToast('Completa todos los campos', 'info');
         return;
       }
@@ -1618,7 +1673,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await api('/appointments', {
           method: 'POST',
           body: JSON.stringify({
-            id_paciente: Number(state.user.id || state.user.id_usuario),
+            id_paciente: patientId,
             id_medico: doctorId,
             fecha: new Date(dateTime).toISOString(),
             motivo: reason,

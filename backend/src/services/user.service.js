@@ -69,7 +69,7 @@ const UserService = {
   },
 
   // Assign a role to an existing user and create related table rows if missing.
-  // extras may contain id_zona, numero_licencia, id_especialidad
+  // extras may contain numero_licencia and id_especialidad for medics.
   async assignRoleToUser(id_usuario, id_tipo, extras = {}) {
     const client = await pool.connect();
 
@@ -118,8 +118,8 @@ const UserService = {
 
         if (per.rowCount === 0) {
           await client.query(
-            'INSERT INTO personal (id_usuario, id_zona) VALUES ($1, $2)',
-            [id_usuario, extras.id_zona ?? null]
+            'INSERT INTO personal (id_usuario) VALUES ($1)',
+            [id_usuario]
           );
         }
 

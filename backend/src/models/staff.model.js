@@ -3,13 +3,13 @@ const pool = require('../config/db');
 const StaffModel = {
 
   // Insertar en PERSONAL (base común)
-  async createStaff(id_usuario, id_zona) {
+  async createStaff(id_usuario) {
     const query = `
-      INSERT INTO personal (id_usuario, id_zona)
-      VALUES ($1, $2)
+      INSERT INTO personal (id_usuario)
+      VALUES ($1)
       RETURNING *;
     `;
-    const result = await pool.query(query, [id_usuario, id_zona]);
+    const result = await pool.query(query, [id_usuario]);
     return result.rows[0];
   },
 
@@ -46,13 +46,11 @@ const StaffModel = {
         u.id_usuario,
         u.nombre,
         u.apellido,
-        e.nombre AS especialidad,
-        z.nombre AS zona
+        e.nombre AS especialidad
       FROM personal_salud ps
       JOIN usuarios u ON ps.id_usuario = u.id_usuario
       JOIN especialidades e ON ps.id_especialidad = e.id_especialidad
-      JOIN personal p ON p.id_usuario = u.id_usuario
-      JOIN zonas z ON p.id_zona = z.id_zona;
+      JOIN personal p ON p.id_usuario = u.id_usuario;
     `;
     const result = await pool.query(query);
     return result.rows;

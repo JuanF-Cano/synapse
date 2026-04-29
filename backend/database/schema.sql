@@ -42,16 +42,9 @@ CREATE TABLE pacientes (
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
 );
 
-CREATE TABLE zonas (
-    id_zona SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL
-);
-
 CREATE TABLE personal (
     id_usuario INT PRIMARY KEY,
-    id_zona INT,
-    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
-    FOREIGN KEY (id_zona) REFERENCES zonas(id_zona)
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
 );
 
 CREATE TABLE especialidades (

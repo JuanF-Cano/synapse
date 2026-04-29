@@ -18,12 +18,6 @@ INSERT INTO estados_factura (estado) VALUES
 ('pagada'),
 ('anulada');
 
--- ZONAS
-INSERT INTO zonas (nombre) VALUES
-('Urgencias'),
-('Consulta externa'),
-('Administración');
-
 -- ESPECIALIDADES
 INSERT INTO especialidades (nombre, descripcion) VALUES
 ('Medicina General', 'Atención primaria'),

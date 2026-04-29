@@ -14,7 +14,6 @@ const StaffService = {
       email,
       password,
       documento,
-      id_zona,
       tipo, // 'medico' | 'recepcionista' | 'admin'
       numero_licencia,
       id_especialidad
@@ -33,7 +32,7 @@ const StaffService = {
     });
 
     // Insertar en PERSONAL (común a todos)
-    await StaffModel.createStaff(user.id_usuario, id_zona);
+    await StaffModel.createStaff(user.id_usuario);
 
     // LÓGICA SEGÚN TIPO
 
