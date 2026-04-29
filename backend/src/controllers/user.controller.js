@@ -39,42 +39,26 @@ const UserController = {
 
   // Assign role to existing user
   async assignRole(req, res) {
-  try {
-    const id_usuario = Number(req.params.id);
-    const { id_tipo, extras } = req.body || {};
+    try {
+      const { id_usuario, id_tipo, extras } = req.body;
 
-    if (!id_tipo) {
-      return res.status(400).json({ error: 'id_tipo requerido' });
+      await UserService.assignRoleToUser(id_usuario, id_tipo, extras);
+
+      res.json({ message: 'Rol asignado correctamente' });
+
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
-
-    const requester = await UserModel.findById(req.user.id);
-
-    const roles = await UserModel.getRolesByUserId(requester.id_usuario);
-    const roleNames = roles.map(r => r.nombre.toLowerCase());
-
-    if (!roleNames.includes('admin')) {
-      return res.status(403).json({ error: 'No tienes permisos para asignar roles' });
-    }
-
-    await UserService.assignRoleToUser(id_usuario, id_tipo, extras || {});
-
-    res.status(200).json({ message: 'Rol agregado correctamente' });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-},
+  },
 
   async removeRole(req, res) {
     try {
-      const id_usuario = Number(req.params.id);
-      const id_tipo = Number(req.params.roleId);
-
-      if (id_tipo === 1 && !(req.user && req.user.roles && req.user.roles.includes('admin'))) {
-        return res.status(403).json({ error: 'Solo administradores pueden remover rol admin' });
-      }
+      const { id_usuario, id_tipo } = req.body;
 
       await UserService.removeRoleFromUser(id_usuario, id_tipo);
-      res.status(200).json({ message: 'Rol removido correctamente' });
+
+      res.json({ message: 'Rol eliminado correctamente' });
+
     } catch (error) {
       res.status(400).json({ error: error.message });
     }

@@ -148,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const requests = [
       api('/appointments').catch(() => []),
       api('/doctors').catch(() => []),
+      api('/staff').catch(() => []),
       api('/patients').catch(() => []),
       api('/treatments').catch(() => []),
       api('/facturas').catch(() => [])
@@ -533,22 +534,55 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderDoctorsAvailability() {
-    const todayInput = new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
 
     return `
       ${renderGreetingCard()}
       <div class="dashboard-card mb-3">
-        <h2 class="h5 mb-2">Disponibilidad de medicos</h2>
-        <p class="dashboard-muted mb-3">Capacidad diaria por medico: 10 citas.</p>
+        <h2 class="h5 mb-2">Disponibilidad de médicos</h2>
+        <p class="dashboard-muted mb-3">Capacidad diaria por médico: 10 citas.</p>
+
         <div class="d-flex gap-2 align-items-center mb-3">
           <label for="availabilityDate" class="form-label mb-0">Fecha</label>
-          <input type="date" id="availabilityDate" class="form-control synapse-input" value="${todayInput}" style="max-width: 220px;">
+          <input type="date" id="availabilityDate" class="form-control synapse-input" value="${today}" style="max-width: 220px;">
           <button type="button" class="btn btn-nav-secondary btn-sm" id="refreshAvailabilityBtn">Actualizar</button>
         </div>
+
         <div class="table-responsive">
-          <table class="table dashboard-table mb-0" id="availabilityTable"></table>
+          <table class="table dashboard-table mb-0" id="availabilityTable">
+            <tbody>
+              <tr><td>Cargando disponibilidad...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
+    `;
+  }
+
+  async function loadAvailability() {
+    const date = document.getElementById('availabilityDate').value;
+
+    const data = await api(`/doctors/availability?date=${date}`);
+
+    const table = document.getElementById('availabilityTable');
+
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Médico</th>
+          <th>Ocupadas</th>
+          <th>Disponibles</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(d => `
+          <tr>
+            <td>${d.doctor.nombre}</td>
+            <td>${d.ocupadas}</td>
+            <td>${d.disponibles}</td>
+          </tr>
+        `).join('')}
+      </tbody>
     `;
   }
 
@@ -1191,38 +1225,64 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('availabilityDate');
     const table = document.getElementById('availabilityTable');
     const refreshBtn = document.getElementById('refreshAvailabilityBtn');
-    if (!input || !table) {
-      return;
-    }
 
-    const renderTable = () => {
+    if (!input || !table) return;
+
+    const renderTable = async () => {
       const selectedDate = input.value;
-      const countByDoctor = {};
 
-      state.data.appointments.forEach((appointment) => {
-        const date = new Date(appointment.fecha).toISOString().slice(0, 10);
-        if (date === selectedDate) {
-          countByDoctor[appointment.medico] = (countByDoctor[appointment.medico] || 0) + 1;
+      try {
+        table.innerHTML = `
+          <tbody>
+            <tr><td>Cargando...</td></tr>
+          </tbody>
+        `;
+
+        const data = await api(`/doctors/availability?date=${selectedDate}`);
+
+        if (!data || data.length === 0) {
+          table.innerHTML = `
+            <tbody>
+              <tr><td colspan="4">No hay datos disponibles.</td></tr>
+            </tbody>
+          `;
+          return;
         }
-      });
 
-      table.innerHTML = `
-        <thead>
-          <tr><th>Medico</th><th>Especialidad</th><th>Agenda del dia</th><th>Disponibles</th></tr>
-        </thead>
-        <tbody>
-          ${state.data.doctors.map((doctor) => {
-            const name = `${doctor.nombre} ${doctor.apellido}`.trim();
-            const used = countByDoctor[name] || 0;
-            const available = Math.max(10 - used, 0);
-            return `<tr><td>${name}</td><td>${doctor.especialidad || '-'}</td><td>${used}/10</td><td>${available}</td></tr>`;
-          }).join('') || '<tr><td colspan="4">No hay medicos registrados.</td></tr>'}
-        </tbody>
-      `;
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Médico</th>
+              <th>Especialidad</th>
+              <th>Agenda del día</th>
+              <th>Disponibles</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(d => `
+              <tr>
+                <td>${d.doctor?.nombre || ''} ${d.doctor?.apellido || ''}</td>
+                <td>${d.doctor?.especialidad || '-'}</td>
+                <td>${d.ocupadas}/10</td>
+                <td>${d.disponibles}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        `;
+
+      } catch (error) {
+        table.innerHTML = `
+          <tbody>
+            <tr><td colspan="4">Error al cargar disponibilidad</td></tr>
+          </tbody>
+        `;
+        console.error(error);
+      }
     };
 
     input.addEventListener('change', renderTable);
     refreshBtn?.addEventListener('click', renderTable);
+
     renderTable();
   }
 
@@ -1304,26 +1364,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hydrateRegisterUsers() {
     const form = document.getElementById('registerUserForm');
-    if (!form) {
-      return;
-    }
+    if (!form) return;
 
     const feedback = document.getElementById('registerFeedback');
     const roleSelect = document.getElementById('newRole');
     const extraFields = document.getElementById('newRoleExtras');
+
     const roleExtras = {
       numeroLicencia: document.getElementById('newNumeroLicencia'),
-      idEspecialidad: document.getElementById('newIdEspecialidad')
+      idEspecialidad: document.getElementById('newIdEspecialidad'),
+      idZona: document.getElementById('newIdZona')
     };
 
     const toggleRoleExtras = () => {
       const role = Number(roleSelect.value);
+
+      const showStaffExtras = [1, 2, 3].includes(role);
       const showDoctorExtras = role === 2;
-      const showStaffExtras = role === 1 || role === 2 || role === 3;
 
       extraFields.classList.toggle('d-none', !showStaffExtras);
-      roleExtras.numeroLicencia.closest('.col-md-6').classList.toggle('d-none', !showDoctorExtras);
-      roleExtras.idEspecialidad.closest('.col-md-6').classList.toggle('d-none', !showDoctorExtras);
+
+      roleExtras.idZona.closest('.col-md-6')
+        .classList.toggle('d-none', !showStaffExtras);
+
+      roleExtras.numeroLicencia.closest('.col-md-6')
+        .classList.toggle('d-none', !showDoctorExtras);
+
+      roleExtras.idEspecialidad.closest('.col-md-6')
+        .classList.toggle('d-none', !showDoctorExtras);
     };
 
     roleSelect?.addEventListener('change', toggleRoleExtras);
@@ -1336,24 +1404,47 @@ document.addEventListener('DOMContentLoaded', () => {
       const role = Number(roleSelect.value);
       const extras = {};
 
+      // =========================
+      // STAFF → necesita zona
+      // =========================
+      if ([1, 2, 3].includes(role)) {
+        const idZona = Number(roleExtras.idZona.value);
+
+        if (!Number.isFinite(idZona) || idZona <= 0) {
+          feedback.textContent = 'Zona requerida para personal.';
+          return;
+        }
+
+        extras.id_zona = idZona;
+      }
+
+      // =========================
+      // MÉDICO → necesita extras
+      // =========================
       if (role === 2) {
         const numeroLicencia = roleExtras.numeroLicencia.value.trim();
         const idEspecialidad = Number(roleExtras.idEspecialidad.value);
+
         if (!numeroLicencia || !Number.isFinite(idEspecialidad) || idEspecialidad <= 0) {
           feedback.textContent = 'Para medico, completa numero de licencia y especialidad.';
           return;
         }
+
         extras.numero_licencia = numeroLicencia;
         extras.id_especialidad = idEspecialidad;
       }
 
+      // =========================
+      // PAYLOAD
+      // =========================
       const payload = {
         nombre: document.getElementById('newNombre').value.trim(),
         apellido: document.getElementById('newApellido').value.trim(),
         email: document.getElementById('newEmail').value.trim(),
         documento: document.getElementById('newDocumento').value.trim(),
         password: document.getElementById('newPassword').value.trim(),
-        roles: [role]
+        roles: [role],
+        extras
       };
 
       const telefono = document.getElementById('newTelefono').value.trim();
@@ -1364,19 +1455,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (fecha_nacimiento) payload.fecha_nacimiento = fecha_nacimiento;
       if (direccion) payload.direccion = direccion;
 
-      if (Object.keys(extras).length > 0) {
-        payload.extras = extras;
-      }
-
       try {
         await api('/users', {
           method: 'POST',
           body: JSON.stringify(payload)
         });
+
         window.Synapse.showToast('Usuario registrado correctamente', 'success');
         feedback.textContent = 'Usuario registrado.';
         form.reset();
         toggleRoleExtras();
+
       } catch (error) {
         window.Synapse.showToast(error.message || 'No se pudo registrar', 'error');
         feedback.textContent = error.message || 'No se pudo registrar.';
@@ -1393,9 +1482,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hydrateManageUsers() {
     const body = document.getElementById('manageUsersBody');
-    if (!body) {
-      return;
-    }
+    if (!body) return;
 
     const refreshBtn = document.getElementById('refreshUsersBtn');
 
@@ -1408,9 +1495,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         body.innerHTML = users.map((user) => {
           const roles = Array.isArray(user.roles) ? user.roles : [];
+
           const removableRoles = roles.map((roleName) => {
             const roleId = window.Synapse.ROLE_ID_MAP[roleName] || '';
-            return `<button type="button" class="btn btn-sm btn-outline-danger remove-role-btn" data-user="${user.id_usuario}" data-role-id="${roleId}" data-role-name="${roleName}">${roleName}</button>`;
+            return `
+              <button type="button"
+                class="btn btn-sm btn-outline-danger remove-role-btn"
+                data-user="${user.id_usuario}"
+                data-role-id="${roleId}"
+                data-role-name="${roleName}">
+                ${roleName}
+              </button>
+            `;
           }).join(' ');
 
           const availableRoles = Object.keys(window.Synapse.ROLE_ID_MAP)
@@ -1428,11 +1524,13 @@ document.addEventListener('DOMContentLoaded', () => {
               <td>${roles.join(', ') || '-'}</td>
               <td>
                 <div class="d-flex gap-2">
-                  <select class="form-select synapse-input form-select-sm add-role-select" data-user="${user.id_usuario}" style="min-width: 150px;">
+                  <select class="form-select form-select-sm add-role-select" data-user="${user.id_usuario}">
                     <option value="">Selecciona</option>
                     ${roleOptions}
                   </select>
-                  <button type="button" class="btn btn-sm btn-nav-primary add-role-btn" data-user="${user.id_usuario}">Agregar</button>
+                  <button type="button" class="btn btn-sm btn-primary add-role-btn" data-user="${user.id_usuario}">
+                    Agregar
+                  </button>
                 </div>
               </td>
               <td><div class="d-flex flex-wrap gap-1">${removableRoles || '-'}</div></td>
@@ -1440,64 +1538,97 @@ document.addEventListener('DOMContentLoaded', () => {
           `;
         }).join('') || '<tr><td colspan="5">No hay usuarios.</td></tr>';
 
+        // =========================
+        // AGREGAR ROL
+        // =========================
         body.querySelectorAll('.add-role-btn').forEach((button) => {
           button.addEventListener('click', async () => {
+
             const userId = Number(button.dataset.user);
             const select = body.querySelector(`.add-role-select[data-user="${userId}"]`);
             const roleName = select?.value;
             const roleId = window.Synapse.ROLE_ID_MAP[roleName];
 
             if (!roleId) {
-              window.Synapse.showToast('Selecciona un rol para agregar', 'info');
+              window.Synapse.showToast('Selecciona un rol', 'info');
               return;
             }
 
             const extras = {};
 
-            if (roleName === 'medico') {
-              const numeroLicencia = prompt('Número de licencia del médico:');
-              const idEspecialidad = prompt('ID de especialidad:');
+            try {
+              // STAFF necesita zona
+              if (['medico', 'admin', 'recepcionista'].includes(roleName)) {
+                const idZona = prompt('ID de zona:');
+                if (!idZona) throw new Error('Zona requerida');
 
-              if (!numeroLicencia || !idEspecialidad) {
-                window.Synapse.showToast('Licencia y especialidad son requeridas para médicos', 'info');
-                return;
+                extras.id_zona = Number(idZona);
               }
 
-              extras.numero_licencia = numeroLicencia;
-              extras.id_especialidad = Number(idEspecialidad);
-            }
+              // MÉDICO necesita más datos
+              if (roleName === 'medico') {
+                const numeroLicencia = prompt('Número de licencia:');
+                const idEspecialidad = prompt('ID de especialidad:');
 
-            try {
-              await api(`/users/${userId}/roles`, {
+                if (!numeroLicencia || !idEspecialidad) {
+                  throw new Error('Licencia y especialidad requeridas');
+                }
+
+                extras.numero_licencia = numeroLicencia;
+                extras.id_especialidad = Number(idEspecialidad);
+              }
+
+              await api(`/users/assign-role`, {
                 method: 'POST',
-                body: JSON.stringify({ id_tipo: roleId, extras })
+                body: JSON.stringify({
+                  id_usuario: userId,
+                  id_tipo: roleId,
+                  extras
+                })
               });
+
               window.Synapse.showToast('Rol agregado correctamente', 'success');
-              location.reload();
+              await loadUsers();
+
             } catch (error) {
-              window.Synapse.showToast(error.message || 'No se pudo agregar el rol', 'error');
+              window.Synapse.showToast(error.message || 'Error al agregar rol', 'error');
             }
           });
         });
 
+        // =========================
+        // REMOVER ROL
+        // =========================
         body.querySelectorAll('.remove-role-btn').forEach((button) => {
           button.addEventListener('click', async () => {
+
             const userId = Number(button.dataset.user);
             const roleId = Number(button.dataset.roleId);
             const roleName = button.dataset.roleName;
 
+            if (!confirm(`¿Seguro que quieres quitar el rol ${roleName}?`)) return;
+
             try {
-              await api(`/users/${userId}/roles/${roleId}`, { method: 'DELETE' });
+              await api(`/users/remove-role`, {
+                method: 'POST',
+                body: JSON.stringify({
+                  id_usuario: userId,
+                  id_tipo: roleId
+                })
+              });
+
               window.Synapse.showToast(`Rol ${roleName} removido`, 'success');
               await loadUsers();
+
             } catch (error) {
-              window.Synapse.showToast(error.message || 'No se pudo remover el rol', 'error');
+              window.Synapse.showToast(error.message || 'Error al remover rol', 'error');
             }
           });
         });
+
       } catch (error) {
-        body.innerHTML = '<tr><td colspan="5">No se pudo cargar la lista de usuarios.</td></tr>';
-        window.Synapse.showToast(error.message || 'No se pudo cargar la lista de usuarios', 'error');
+        body.innerHTML = '<tr><td colspan="5">Error cargando usuarios</td></tr>';
+        window.Synapse.showToast(error.message || 'Error', 'error');
       }
     };
 

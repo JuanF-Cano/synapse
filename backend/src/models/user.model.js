@@ -17,23 +17,37 @@ const UserModel = {
   },
 
   // Asignar rol
-  async assignRole(id_usuario, id_tipo) {
-    const query = `
-      INSERT INTO usuario_tipo (id_usuario, id_tipo)
-      VALUES ($1, $2)
-      ON CONFLICT DO NOTHING;
-    `;
-
-    await pool.query(query, [id_usuario, id_tipo]);
+  async assignRole(id_usuario, id_tipo, client = pool) {
+    await client.query(
+      'INSERT INTO usuario_tipo (id_usuario, id_tipo) VALUES ($1, $2)',
+      [id_usuario, id_tipo]
+    );
   },
 
-  async removeRole(id_usuario, id_tipo) {
-    const query = `
-      DELETE FROM usuario_tipo
-      WHERE id_usuario = $1 AND id_tipo = $2;
-    `;
+  async removeRole(id_usuario, id_tipo, client = pool) {
+    await client.query(
+      'DELETE FROM usuario_tipo WHERE id_usuario = $1 AND id_tipo = $2',
+      [id_usuario, id_tipo]
+    );
+  },
 
-    await pool.query(query, [id_usuario, id_tipo]);
+  async getRoles(id_usuario, client = pool) {
+    const res = await client.query(
+      `SELECT tu.id_tipo, t.nombre
+       FROM usuario_tipo tu
+       JOIN tipos_usuario t ON tu.id_tipo = t.id_tipo
+       WHERE tu.id_usuario = $1`,
+      [id_usuario]
+    );
+    return res.rows;
+  },
+
+  async countRoles(id_usuario, client = pool) {
+    const res = await client.query(
+      'SELECT COUNT(*) FROM usuario_tipo WHERE id_usuario = $1',
+      [id_usuario]
+    );
+    return parseInt(res.rows[0].count);
   },
 
   // Buscar usuario por email
@@ -50,25 +64,6 @@ const UserModel = {
     const query = 'SELECT * FROM usuarios WHERE id_usuario = $1;';
     const result = await pool.query(query, [id_usuario]);
     return result.rows[0];
-  },
-
-  // Obtener rol por id
-  async getRoles(id_usuario) {
-    const query = `
-      SELECT t.id_tipo, t.nombre
-      FROM usuario_tipo ut
-      JOIN tipos_usuario t ON ut.id_tipo = t.id_tipo
-      WHERE ut.id_usuario = $1;
-    `;
-
-    const result = await pool.query(query, [id_usuario]);
-    return result.rows;
-  },
-
-  async countRoles(id_usuario) {
-    const query = 'SELECT COUNT(*)::int AS total FROM usuario_tipo WHERE id_usuario = $1;';
-    const result = await pool.query(query, [id_usuario]);
-    return result.rows[0]?.total || 0;
   },
 
   async updateUser(id_usuario, updates) {

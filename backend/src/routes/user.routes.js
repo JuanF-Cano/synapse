@@ -59,7 +59,7 @@ router.get('/users', verifyToken, authorizeRoles('admin', 'recepcionista'), User
 
 router.patch('/users/:id', verifyToken, UserController.update);
 
-router.post('/users/:id/roles', verifyToken, authorizeRoles('admin', 'recepcionista'), UserController.assignRole);
-router.delete('/users/:id/roles/:roleId', verifyToken, authorizeRoles('admin', 'recepcionista'), UserController.removeRole);
+router.post('/users/assign-role', verifyToken, authorizeRoles('admin'), UserController.assignRole);
+router.post('/users/remove-role', verifyToken, authorizeRoles('admin'), UserController.removeRole);
 
 module.exports = router;

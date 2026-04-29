@@ -2,13 +2,13 @@ const StaffService = require('../services/staff.service');
 
 const StaffController = {
 
-  async createDoctor(req, res) {
+  async create(req, res) {
     try {
-      const doctor = await StaffService.createDoctor(req.body);
+      const staff = await StaffService.createStaff(req.body);
 
       res.status(201).json({
-        message: 'Médico creado correctamente',
-        doctor
+        message: 'Personal creado correctamente',
+        staff
       });
 
     } catch (error) {
@@ -18,10 +18,19 @@ const StaffController = {
     }
   },
 
-  async getDoctors(req, res) {
+  async getAvailability(req, res) {
     try {
-      const doctors = await StaffService.getDoctors();
-      res.json(doctors);
+      const { date } = req.query;
+
+      if (!date) {
+        return res.status(400).json({
+          error: 'Fecha requerida'
+        });
+      }
+
+      const data = await StaffService.getAvailability(date);
+      res.json(data);
+
     } catch (error) {
       res.status(500).json({
         error: error.message

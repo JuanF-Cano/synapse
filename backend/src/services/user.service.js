@@ -72,68 +72,97 @@ const UserService = {
   // extras may contain id_zona, numero_licencia, id_especialidad
   async assignRoleToUser(id_usuario, id_tipo, extras = {}) {
     const client = await pool.connect();
+
     try {
       await client.query('BEGIN');
 
       const roleId = Number(id_tipo);
-      if (!Number.isInteger(roleId) || roleId < 1) {
-        throw new Error('Rol invalido');
-      }
 
-      // Insert into usuario_tipo if not exists
-      const existsRes = await client.query(
+      // evitar duplicados
+      const exists = await client.query(
         'SELECT 1 FROM usuario_tipo WHERE id_usuario = $1 AND id_tipo = $2',
         [id_usuario, roleId]
       );
-      if (existsRes.rowCount === 0) {
-        await client.query(
-          'INSERT INTO usuario_tipo (id_usuario, id_tipo) VALUES ($1, $2)',
-          [id_usuario, roleId]
-        );
+
+      if (exists.rowCount === 0) {
+        await UserModel.assignRole(id_usuario, roleId, client);
       }
 
-      // Role-specific related rows
-      // Paciente (id 4)
+      // =====================
+      // PACIENTE
+      // =====================
       if (roleId === 4) {
-        const p = await client.query('SELECT 1 FROM pacientes WHERE id_usuario = $1', [id_usuario]);
+        const p = await client.query(
+          'SELECT 1 FROM pacientes WHERE id_usuario = $1',
+          [id_usuario]
+        );
+
         if (p.rowCount === 0) {
-          await client.query('INSERT INTO pacientes (id_usuario) VALUES ($1)', [id_usuario]);
+          await client.query(
+            'INSERT INTO pacientes (id_usuario) VALUES ($1)',
+            [id_usuario]
+          );
         }
       }
 
-      // Staff roles (medico id 2, recepcionista id 3, admin id 1 can also be staff)
+      // =====================
+      // STAFF
+      // =====================
       if ([1, 2, 3].includes(roleId)) {
-        // Ensure personal exists
-        const per = await client.query('SELECT 1 FROM personal WHERE id_usuario = $1', [id_usuario]);
+
+        // personal base
+        const per = await client.query(
+          'SELECT 1 FROM personal WHERE id_usuario = $1',
+          [id_usuario]
+        );
+
         if (per.rowCount === 0) {
-          await client.query('INSERT INTO personal (id_usuario, id_zona) VALUES ($1, $2)', [id_usuario, extras.id_zona ?? null]);
+          await client.query(
+            'INSERT INTO personal (id_usuario, id_zona) VALUES ($1, $2)',
+            [id_usuario, extras.id_zona ?? null]
+          );
         }
 
-        // If medico and license provided, create personal_salud if missing
+        // medico
         if (roleId === 2) {
-          if (!extras.numero_licencia || extras.id_especialidad === undefined) {
-            throw new Error('Para asignar el rol de medico se requiere numero_licencia e id_especialidad');
+          if (!extras.numero_licencia || !extras.id_especialidad) {
+            throw new Error('Faltan datos del medico');
           }
 
-          const ps = await client.query('SELECT 1 FROM personal_salud WHERE id_usuario = $1', [id_usuario]);
+          const ps = await client.query(
+            'SELECT 1 FROM personal_salud WHERE id_usuario = $1',
+            [id_usuario]
+          );
+
           if (ps.rowCount === 0) {
             await client.query(
-              'INSERT INTO personal_salud (id_usuario, numero_licencia, id_especialidad, estado) VALUES ($1, $2, $3, true)',
+              `INSERT INTO personal_salud 
+              (id_usuario, numero_licencia, id_especialidad, estado)
+              VALUES ($1, $2, $3, true)`,
               [id_usuario, extras.numero_licencia, extras.id_especialidad]
             );
           }
         }
 
-        // If administrative staff (recepcionista or admin), ensure personal_administrativo
-        if ([3, 1].includes(roleId)) {
-          const pa = await client.query('SELECT 1 FROM personal_administrativo WHERE id_usuario = $1', [id_usuario]);
+        // administrativo
+        if ([1, 3].includes(roleId)) {
+          const pa = await client.query(
+            'SELECT 1 FROM personal_administrativo WHERE id_usuario = $1',
+            [id_usuario]
+          );
+
           if (pa.rowCount === 0) {
-            await client.query('INSERT INTO personal_administrativo (id_usuario) VALUES ($1)', [id_usuario]);
+            await client.query(
+              'INSERT INTO personal_administrativo (id_usuario) VALUES ($1)',
+              [id_usuario]
+            );
           }
         }
       }
 
       await client.query('COMMIT');
+      return true;
+
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -143,18 +172,77 @@ const UserService = {
   },
 
   async removeRoleFromUser(id_usuario, id_tipo) {
-    const roleId = Number(id_tipo);
-    if (!Number.isInteger(roleId) || roleId < 1) {
-      throw new Error('Rol invalido');
-    }
+    const client = await pool.connect();
 
-    const totalRoles = await UserModel.countRoles(id_usuario);
-    if (totalRoles <= 1) {
-      throw new Error('No se puede remover el ultimo rol del usuario');
-    }
+    try {
+      await client.query('BEGIN');
 
-    await UserModel.removeRole(id_usuario, roleId);
-    return true;
+      const roleId = Number(id_tipo);
+
+      const totalRoles = await UserModel.countRoles(id_usuario, client);
+
+      if (totalRoles <= 1) {
+        throw new Error('No se puede eliminar el ultimo rol');
+      }
+
+      await UserModel.removeRole(id_usuario, roleId, client);
+
+      // =====================
+      // LIMPIEZA
+      // =====================
+
+      if (roleId === 4) {
+        await client.query(
+          'DELETE FROM pacientes WHERE id_usuario = $1',
+          [id_usuario]
+        );
+      }
+
+      if (roleId === 2) {
+        await client.query(
+          'DELETE FROM personal_salud WHERE id_usuario = $1',
+          [id_usuario]
+        );
+      }
+
+      if ([1, 3].includes(roleId)) {
+        const stillAdmin = await client.query(
+          `SELECT 1 FROM usuario_tipo 
+          WHERE id_usuario = $1 AND id_tipo IN (1,3)`,
+          [id_usuario]
+        );
+
+        if (stillAdmin.rowCount === 0) {
+          await client.query(
+            'DELETE FROM personal_administrativo WHERE id_usuario = $1',
+            [id_usuario]
+          );
+        }
+      }
+
+      // 🔥 CLAVE: verificar si queda staff
+      const stillStaff = await client.query(
+        `SELECT 1 FROM usuario_tipo 
+        WHERE id_usuario = $1 AND id_tipo IN (1,2,3)`,
+        [id_usuario]
+      );
+
+      if (stillStaff.rowCount === 0) {
+        await client.query(
+          'DELETE FROM personal WHERE id_usuario = $1',
+          [id_usuario]
+        );
+      }
+
+      await client.query('COMMIT');
+      return true;
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 
   // Update user with rules: password can always be changed; other attrs only if null for self-updates.
