@@ -1377,12 +1377,22 @@ document.addEventListener('DOMContentLoaded', () => {
       event.preventDefault();
       feedback.textContent = '';
 
+      const patientId = Number(document.getElementById('appointmentPatient').value);
+      const doctorId = Number(doctorInput.value);
+
+      // Prevenir que la cita sea con la misma persona como paciente y medico
+      if (patientId === doctorId) {
+        window.Synapse.showToast('El paciente y el médico no pueden ser la misma persona', 'info');
+        feedback.textContent = 'El paciente y el médico no pueden ser la misma persona.';
+        return;
+      }
+
       try {
         await api('/appointments', {
           method: 'POST',
           body: JSON.stringify({
-            id_paciente: Number(document.getElementById('appointmentPatient').value),
-            id_medico: Number(doctorInput.value),
+            id_paciente: patientId,
+            id_medico: doctorId,
             fecha: new Date(dateInput.value).toISOString(),
             motivo: document.getElementById('appointmentReason').value.trim(),
             observaciones: ''
@@ -1666,6 +1676,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!patientId || !doctorId || !dateTime || !reason) {
         window.Synapse.showToast('Completa todos los campos', 'info');
+        return;
+      }
+
+      // Prevenir que el paciente se seleccione a sí mismo como médico
+      if (patientId === doctorId) {
+        window.Synapse.showToast('No puedes ser tu propio médico', 'info');
+        feedback.textContent = 'No puedes ser tu propio médico.';
         return;
       }
 
