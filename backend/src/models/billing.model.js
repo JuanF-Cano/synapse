@@ -23,14 +23,14 @@ const BillingModel = {
   // Obtener tratamientos y sumar costo
   async getTotalFromCita(id_cita) {
     const query = `
-      SELECT SUM(t.costo) as total
+      SELECT SUM(t.costo) + $1 as total
       FROM tratamientos t
       JOIN tratamientos_cita tc 
         ON t.id_tratamiento = tc.id_tratamiento
-      WHERE tc.id_cita = $1;
+      WHERE tc.id_cita = $2;
     `;
 
-    const result = await pool.query(query, [id_cita]);
+    const result = await pool.query(query, [copago, id_cita]);
     return result.rows[0].total || 0;
   },
 

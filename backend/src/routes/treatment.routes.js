@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const TreatmentController = require('../controllers/treatment.controller');
-const { verifyToken } = require('../middlewares/auth.middleware');
+const { verifyToken, authorizeRoles } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -69,6 +69,9 @@ router.get('/treatments', verifyToken, TreatmentController.getAll);
  *         application/json:
  *           schema:
  *             type: object
+ *             required: 
+ *               - id_cita
+ *               - id_tratamiento
  *             properties:
  *               id_cita:
  *                 type: integer
@@ -82,7 +85,7 @@ router.get('/treatments', verifyToken, TreatmentController.getAll);
  *       400:
  *         description: Error (cita o tratamiento inválido)
  */
-router.post('/treatments/assign', verifyToken, TreatmentController.assign);
+router.post('/treatments/assign', verifyToken, authorizeRoles('medico'), TreatmentController.assign);
 
 
 /**

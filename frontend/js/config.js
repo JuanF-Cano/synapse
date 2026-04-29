@@ -1,5 +1,5 @@
 (function (global) {
-  const API_BASE_URL = global.SYNAPSE_API_BASE_URL || 'http://localhost:3000/api';
+  const API_BASE_URL = 'http://localhost:3000/api';
   const AUTH_KEY = 'synapseAuth';
   const THEME_KEY = 'synapseTheme';
 
@@ -163,19 +163,26 @@
   }
 
   async function request(path, options = {}) {
+    console.log('BODY TYPE:', typeof options.body);
+    console.log('BODY VALUE:', options.body);
     const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...(options.headers || {})
-      },
-      ...options
+      }
     });
 
     const contentType = response.headers.get('content-type') || '';
-    const body = contentType.includes('application/json') ? await response.json() : await response.text();
+    const body = contentType.includes('application/json')
+      ? await response.json()
+      : await response.text();
 
     if (!response.ok) {
-      const message = body && typeof body === 'object' && body.error ? body.error : 'Request failed';
+      const message =
+        body && typeof body === 'object' && body.error
+          ? body.error
+          : 'Request failed';
       throw new Error(message);
     }
 

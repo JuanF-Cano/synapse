@@ -26,6 +26,8 @@ const { verifyToken } = require('../middlewares/auth.middleware');
  *           schema:
  *             type: object
  *             properties:
+ *               copago:
+ *                 type: integer
  *               id_cita:
  *                 type: integer
  *     responses:

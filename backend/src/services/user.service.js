@@ -1,3 +1,4 @@
+const { runInContext } = require('vm');
 const UserModel = require('../models/user.model');
 const pool = require('../config/db');
 const bcrypt = require('bcrypt');
@@ -27,6 +28,8 @@ const UserService = {
       password: hashedpassword,
       documento
     });
+
+    let assignedRoles = [];
 
     if (roles.length > 0) {
       for (const role of roles) {
@@ -156,7 +159,7 @@ const UserService = {
 
   // Update user with rules: password can always be changed; other attrs only if null for self-updates.
   // requestUser is the authenticated user object (with id_usuario and roles array)
-  async updateUser(requestUser, id_usuario, data) {
+  async updatePassword(requestUser, id_usuario, data) {
     const target = await UserModel.findById(id_usuario);
     if (!target) throw new Error('Usuario no encontrado');
 
@@ -166,6 +169,10 @@ const UserService = {
 
     const updates = {};
 
+    if (!data) {
+      throw new Error('No se recibieron datos');
+    }
+
     // Password handling
     if (data.password) {
       const isSelf = Number(requestUser.id_usuario || requestUser.id) === Number(id_usuario);
@@ -174,32 +181,6 @@ const UserService = {
         throw new Error('No tienes permisos para modificar la contraseña');
       }
       updates.password = await bcrypt.hash(data.password, 10);
-    }
-
-    // Fields to consider
-    const otherFields = ['nombre','apellido','telefono','direccion','fecha_nacimiento','documento','email'];
-    for (let field of otherFields) {
-      if (data[field] === undefined) continue;
-
-      const isSelf = Number(requestUser.id_usuario || requestUser.id) === Number(id_usuario);
-      const isAdmin = normalizedRoles.includes('admin');
-      const isRecepcion = normalizedRoles.includes('recepcionista');
-
-      if (isSelf) {
-        // self can only modify if current value is null
-        if (target[field] === null) {
-          updates[field] = data[field];
-        } else {
-          throw new Error(`No puedes modificar '${field}' una vez establecido`);
-        }
-      } else if (isRecepcion) {
-        // recepcionistas can modify all except password
-        updates[field] = data[field];
-      } else if (isAdmin) {
-        updates[field] = data[field];
-      } else {
-        throw new Error('No tienes permisos para modificar este usuario');
-      }
     }
 
     if (Object.keys(updates).length === 0) {

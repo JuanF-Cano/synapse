@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const AppointmentController = require('../controllers/appointment.controller');
-const { verifyToken } = require('../middlewares/auth.middleware');
+const { verifyToken, authorizeRoles } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -41,7 +41,7 @@ const { verifyToken } = require('../middlewares/auth.middleware');
  *       201:
  *         description: Cita creada
  */
-router.post('/appointments', verifyToken, AppointmentController.create);
+router.post('/appointments', verifyToken, authorizeRoles('admin', 'recepcionista', 'paciente'), AppointmentController.create);
 
 /**
  * @swagger
