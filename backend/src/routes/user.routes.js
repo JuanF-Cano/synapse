@@ -33,13 +33,12 @@ const { verifyToken, authorizeRoles } = require('../middlewares/auth.middleware'
  */
 router.post('/users', UserController.register);
 
-// Usuario autenticado
 router.get('/users/me', verifyToken, UserController.me);
+router.get('/users', verifyToken, authorizeRoles('admin', 'recepcionista'), UserController.list);
 
-// Asignar rol a usuario existente (admin/recepcionista)
-router.post('/users/:id/roles', verifyToken, authorizeRoles('admin', 'recepcionista'), UserController.assignRole);
-
-// Actualizar usuario (password siempre permitido; other rules enforced in service)
 router.patch('/users/:id', verifyToken, UserController.update);
+
+router.post('/users/:id/roles', verifyToken, authorizeRoles('admin', 'recepcionista'), UserController.assignRole);
+router.delete('/users/:id/roles/:roleId', verifyToken, authorizeRoles('admin', 'recepcionista'), UserController.removeRole);
 
 module.exports = router;

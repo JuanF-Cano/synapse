@@ -1,6 +1,4 @@
 const UserModel = require('../models/user.model');
-const PatientModel = require('../models/patient.model');
-const StaffModel = require('../models/staff.model');
 const pool = require('../config/db');
 const bcrypt = require('bcrypt');
 
@@ -30,10 +28,9 @@ const UserService = {
       documento
     });
 
-    // Asignar roles (solo usuario_tipo; related table rows created when needed via assignRoleToUser)
-    if (roles && roles.length > 0) {
-      for (let role of roles) {
-        await UserService.assignRoleToUser(user.id_usuario, role, extras);
+    if (roles.length > 0) {
+      for (const role of roles) {
+        await this.assignRoleToUser(user.id_usuario, role, extras);
       }
     }
 
@@ -47,11 +44,25 @@ const UserService = {
     }
 
     const roles = await UserModel.getRoles(id_usuario);
-
     return {
       ...user,
       roles: roles.map((role) => role.nombre)
     };
+  },
+
+  async getUsersWithRoles() {
+    const users = await UserModel.getAllUsers();
+    const withRoles = await Promise.all(
+      users.map(async (user) => {
+        const roles = await UserModel.getRoles(user.id_usuario);
+        return {
+          ...user,
+          roles: roles.map((role) => role.nombre)
+        };
+      })
+    );
+
+    return withRoles;
   },
 
   // Assign a role to an existing user and create related table rows if missing.
@@ -62,7 +73,6 @@ const UserService = {
       await client.query('BEGIN');
 
       const roleId = Number(id_tipo);
-
       if (!Number.isInteger(roleId) || roleId < 1) {
         throw new Error('Rol invalido');
       }
@@ -129,6 +139,21 @@ const UserService = {
     }
   },
 
+  async removeRoleFromUser(id_usuario, id_tipo) {
+    const roleId = Number(id_tipo);
+    if (!Number.isInteger(roleId) || roleId < 1) {
+      throw new Error('Rol invalido');
+    }
+
+    const totalRoles = await UserModel.countRoles(id_usuario);
+    if (totalRoles <= 1) {
+      throw new Error('No se puede remover el ultimo rol del usuario');
+    }
+
+    await UserModel.removeRole(id_usuario, roleId);
+    return true;
+  },
+
   // Update user with rules: password can always be changed; other attrs only if null for self-updates.
   // requestUser is the authenticated user object (with id_usuario and roles array)
   async updateUser(requestUser, id_usuario, data) {
@@ -143,14 +168,11 @@ const UserService = {
 
     // Password handling
     if (data.password) {
-      const isSelf = Number(requestUser.id_usuario) === Number(id_usuario);
+      const isSelf = Number(requestUser.id_usuario || requestUser.id) === Number(id_usuario);
       const isAdmin = normalizedRoles.includes('admin');
-      const canChangePassword = isSelf || isAdmin;
-
-      if (!canChangePassword) {
+      if (!isSelf && !isAdmin) {
         throw new Error('No tienes permisos para modificar la contraseña');
       }
-
       updates.password = await bcrypt.hash(data.password, 10);
     }
 
@@ -159,7 +181,7 @@ const UserService = {
     for (let field of otherFields) {
       if (data[field] === undefined) continue;
 
-      const isSelf = Number(requestUser.id_usuario) === Number(id_usuario);
+      const isSelf = Number(requestUser.id_usuario || requestUser.id) === Number(id_usuario);
       const isAdmin = normalizedRoles.includes('admin');
       const isRecepcion = normalizedRoles.includes('recepcionista');
 
@@ -180,10 +202,11 @@ const UserService = {
       }
     }
 
-    if (Object.keys(updates).length === 0) return await UserModel.findById(id_usuario);
+    if (Object.keys(updates).length === 0) {
+      return await UserModel.findById(id_usuario);
+    }
 
-    const updated = await UserModel.updateUser(id_usuario, updates);
-    return updated;
+    return await UserModel.updateUser(id_usuario, updates);
   }
 
 };

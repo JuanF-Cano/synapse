@@ -53,43 +53,11 @@ const BillingService = {
       throw new Error('Factura no existe');
     }
 
-    const facturaActual = factura.rows[0];
-
-    if (!Number.isFinite(Number(monto)) || Number(monto) <= 0) {
-      throw new Error('El monto debe ser mayor a 0');
-    }
-
-    // Calcular saldo restante real
-    const pagosAcumulados = await pool.query(
-      'SELECT COALESCE(SUM(monto), 0) AS total_pagado FROM pagos WHERE id_factura = $1',
-      [id_factura]
-    );
-
-    const totalPagado = Number(pagosAcumulados.rows[0].total_pagado || 0);
-    const montoFactura = Number(facturaActual.monto || 0);
-    const saldoRestante = montoFactura - totalPagado;
-
-    if (saldoRestante <= 0) {
-      throw new Error('La factura ya está pagada');
-    }
-
-    if (Number(monto) > saldoRestante) {
-      throw new Error('El pago excede el saldo pendiente');
-    }
-
     // registrar pago
     const pago = await BillingModel.createPago(data);
 
-    // Actualizar estado según saldo
-    const pagosDespues = await pool.query(
-      'SELECT COALESCE(SUM(monto), 0) AS total_pagado FROM pagos WHERE id_factura = $1',
-      [id_factura]
-    );
-    const totalPagadoDespues = Number(pagosDespues.rows[0].total_pagado || 0);
-    const nuevoSaldo = Number(facturaActual.monto || 0) - totalPagadoDespues;
-
-    // estado 2 = pagada, estado 1 = pendiente
-    await BillingModel.updateEstadoFactura(id_factura, nuevoSaldo <= 0 ? 2 : 1);
+    // actualizar estado (pagada, estado 2)
+    await BillingModel.updateEstadoFactura(id_factura, 2);
 
     return pago;
   },

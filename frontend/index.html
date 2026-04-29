@@ -45,15 +45,20 @@
       </div>
       <div class="ms-auto d-flex flex-row align-items-center gap-3">
         <div class="d-flex flex-row gap-2 align-items-center" id="guestActions">
-          <a class="btn btn-nav-secondary rounded-pill px-4" href="./pages/auth.html?mode=login">Iniciar sesión</a>
-          <a class="btn btn-nav-primary rounded-pill px-4" href="./pages/auth.html?mode=register">Registrarse</a>
+          <a class="btn btn-nav-primary rounded-pill px-4" href="./pages/auth.html">Iniciar sesión</a>
         </div>
-        <div class="d-none flex-row gap-3 align-items-center" id="userActions">
-          <span class="user-pill" id="userGreeting">
-            <i class="bi bi-person-circle user-pill-icon" aria-hidden="true"></i>
-            <span id="userGreetingName">Usuario</span>
-          </span>
-          <button class="btn btn-nav-secondary rounded-pill px-4" id="logoutButton" type="button">Cerrar sesión</button>
+        <div class="dropdown d-none" id="userActions">
+          <button class="user-menu-toggle" id="userMenuToggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Abrir menú de usuario">
+            <i class="bi bi-person-circle user-menu-icon" aria-hidden="true"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end synapse-dropdown" aria-labelledby="userMenuToggle">
+            <!-- El nombre del usuario se inyectará dinámicamente con JavaScript -->
+            <li><h6 class="dropdown-header" id="userGreetingName">Hola,  </h6></li>
+            <li><a class="dropdown-item" id="dashboardLink" href="./pages/dashboard.html">Dashboard</a></li>
+            <li><a class="dropdown-item" id="accountLink" href="./pages/dashboard.html#account">Account</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><button class="dropdown-item" id="logoutButton" type="button">Cerrar sesión</button></li>
+          </ul>
         </div>
         <button class="theme-toggle" id="themeToggle" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro">
           <svg id="themeToggleIcon" class="theme-toggle-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
@@ -79,7 +84,7 @@
                 SYNAPSE concentra lo que más importa: atención de pacientes, disponibilidad médica, historias clínicas, facturación y reportes administrativos con una interfaz clara e intuitiva.
               </p>
               <div class="d-flex flex-wrap gap-3 mt-4">
-                <a class="btn btn-nav-primary btn-lg rounded-pill px-4" href="./pages/auth.html?mode=register">Crear cuenta</a>
+                <a class="btn btn-nav-primary btn-lg rounded-pill px-4" href="./pages/auth.html">Iniciar sesión</a>
                 <a class="btn btn-nav-secondary btn-lg rounded-pill px-4" href="#servicios">Ver funciones</a>
               </div>
               <div class="d-flex flex-wrap gap-3 mt-4 small text-muted-emphasis">
