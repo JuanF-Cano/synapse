@@ -79,7 +79,6 @@ erDiagram
 
     PERSONAL {
         int id_usuario PK, FK
-        int id_zona FK
     }
 
     PERSONAL_SALUD {
@@ -97,11 +96,6 @@ erDiagram
         int id_especialidad PK
         string nombre
         string descripcion
-    }
-
-    ZONAS {
-        int id_zona PK
-        string nombre
     }
 
     CITAS {
@@ -173,7 +167,6 @@ erDiagram
     PERSONAL ||--o{ PERSONAL_SALUD : especializa
     PERSONAL ||--o{ PERSONAL_ADMINISTRATIVO : especializa
 
-    PERSONAL }o--|| ZONAS : asignado
     PERSONAL_SALUD }o--|| ESPECIALIDADES : pertenece
 
     PACIENTES ||--o{ CITAS : agenda
