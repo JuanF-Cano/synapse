@@ -1,68 +1,77 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Synapse | Dashboard</title>
-  <meta name="description" content="Dashboard clínico de Synapse por rol.">
-  <script>
-    (function () {
-      const theme = localStorage.getItem('synapseTheme') === 'dark' ? 'dark' : 'light';
-      document.documentElement.dataset.theme = theme;
-      document.documentElement.style.colorScheme = theme;
-    })();
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="../css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse | Dashboard</title>
+    <meta name="description" content="Dashboard clínico de Synapse por rol.">
+    <script>
+        (function () {
+            const theme = localStorage.getItem('synapseTheme') === 'dark' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = theme;
+            document.documentElement.style.colorScheme = theme;
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="../css/style.css">
 </head>
+
 <body class="synapse-page dashboard-page">
-  <nav class="navbar synapse-navbar fixed-top">
-    <div class="container-fluid px-3 px-lg-4">
-      <a class="navbar-brand d-flex align-items-center gap-3" href="../index.html">
-        <span class="brand-logo-frame" aria-hidden="true">
-          <span class="brand-logo-symbol">S</span>
-        </span>
-        <span>
-          <span class="d-block brand-title">Synapse</span>
-          <small class="brand-subtitle">Dashboard clínico</small>
-        </span>
-      </a>
-      <div class="d-flex align-items-center gap-2 gap-md-3">
-        <span class="user-pill" id="dashboardUserPill">
-          <i class="bi bi-person-circle user-pill-icon" aria-hidden="true"></i>
-            <span id="dashboardUserName" class="user-pill-name">  </span>
-        </span>
-        <button class="btn btn-nav-secondary rounded-pill px-3 px-md-4" id="logoutButton" type="button">Cerrar sesión</button>
-        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro">
-          <svg id="themeToggleIcon" class="theme-toggle-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-            <path d="M32 10v44M18 18l10 10M46 18 36 28M12 32h12M40 32h12M18 46l10-10M46 46 36 36"></path>
-            <circle cx="32" cy="32" r="6"></circle>
-            <path d="M24 16c0 4 3 7 8 10 5-3 8-6 8-10"></path>
-            <path d="M24 48c0-4 3-7 8-10 5 3 8 6 8 10"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </nav>
+    <nav class="navbar synapse-navbar fixed-top">
+        <div class="container-fluid px-3 px-lg-4">
+            <a class="navbar-brand d-flex align-items-center gap-3" href="../index.html">
+                <span class="brand-logo-frame" aria-hidden="true">
+                    <span class="brand-logo-symbol"> <img src="../images/logo.png" alt="Logo de Synapse"
+                            class="brand-logo-image">
+                    </span>
+                </span>
+                <span>
+                    <small class="brand-subtitle">SYNAPSE</small>
+                </span>
+            </a>
+            <div class="d-flex align-items-center gap-2 gap-md-3">
+                <span class="user-pill" id="dashboardUserPill">
+                    <i class="bi bi-person-circle user-pill-icon" aria-hidden="true"></i>
+                    <span id="dashboardUserName" class="user-pill-name"> </span>
+                </span>
+                <button class="btn btn-nav-secondary rounded-pill px-3 px-md-4" id="logoutButton" type="button">Cerrar
+                    sesión</button>
+                <button class="theme-toggle" id="themeToggle" type="button" aria-label="Cambiar a modo oscuro"
+                    title="Cambiar a modo oscuro">
+                    <svg id="themeToggleIcon" class="theme-toggle-icon" viewBox="0 0 64 64" aria-hidden="true"
+                        focusable="false">
+                        <path d="M32 10v44M18 18l10 10M46 18 36 28M12 32h12M40 32h12M18 46l10-10M46 46 36 36"></path>
+                        <circle cx="32" cy="32" r="6"></circle>
+                        <path d="M24 16c0 4 3 7 8 10 5-3 8-6 8-10"></path>
+                        <path d="M24 48c0-4 3-7 8-10 5 3 8 6 8 10"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
 
-  <main class="dashboard-shell container-fluid px-3 px-lg-4">
-    <div class="row g-3 g-lg-4">
-      <aside class="col-12 col-lg-3 col-xl-2">
-        <div class="dashboard-sidebar" id="dashboardSidebar"></div>
-      </aside>
-      <section class="col-12 col-lg-9 col-xl-10">
-        <div class="dashboard-main" id="dashboardMain"></div>
-      </section>
-    </div>
-  </main>
+    <main class="dashboard-shell container-fluid px-3 px-lg-4">
+        <div class="row g-3 g-lg-4">
+            <aside class="col-12 col-lg-3 col-xl-2">
+                <div class="dashboard-sidebar" id="dashboardSidebar"></div>
+            </aside>
+            <section class="col-12 col-lg-9 col-xl-10">
+                <div class="dashboard-main" id="dashboardMain"></div>
+            </section>
+        </div>
+    </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="../js/config.js"></script>
-  <script src="../js/dashboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/dashboard.js"></script>
 </body>
+
 </html>

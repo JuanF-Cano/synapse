@@ -7,28 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const themeToggle = document.getElementById('themeToggle');
   const themeToggleIcon = document.getElementById('themeToggleIcon');
-  const authShell = document.getElementById('authShell');
-  const authPanel = document.getElementById('authPanel');
-  const authTitle = document.getElementById('authTitle');
-  const loginTab = document.getElementById('loginTab');
-  const registerTab = document.getElementById('registerTab');
   const loginForm = document.getElementById('loginForm');
-  const registerForm = document.getElementById('registerForm');
   const authError = document.getElementById('authError');
   const authSuccess = document.getElementById('authSuccess');
-  const fillDemoLogin = document.getElementById('fillDemoLogin');
-  const fillDemoRegister = document.getElementById('fillDemoRegister');
-  const switchToLoginFromRegister = document.getElementById('switchToLoginFromRegister');
   const loginEmail = document.getElementById('loginEmail');
   const loginPassword = document.getElementById('loginPassword');
-  const registerNombre = document.getElementById('registerNombre');
-  const registerApellido = document.getElementById('registerApellido');
-  const registerEmail = document.getElementById('registerEmail');
-  const registerDocumento = document.getElementById('registerDocumento');
-  const registerPassword = document.getElementById('registerPassword');
-  const registerRole = document.getElementById('registerRole');
   const loginSubmit = document.getElementById('loginSubmit');
-  const registerSubmit = document.getElementById('registerSubmit');
 
   function renderTheme(theme) {
     const isDark = theme === 'dark';
@@ -39,15 +23,14 @@ document.addEventListener('DOMContentLoaded', () => {
       themeToggle.setAttribute('title', isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
     }
     if (themeToggleIcon) {
-      themeToggleIcon.innerHTML = '<path d="M32 10v44M18 18l10 10M46 18 36 28M12 32h12M40 32h12M18 46l10-10M46 46 36 36"/><circle cx="32" cy="32" r="6"/><path d="M24 16c0 4 3 7 8 10 5-3 8-6 8-10"/><path d="M24 48c0-4 3-7 8-10 5 3 8 6 8 10"/>';
-      themeToggleIcon.style.color = isDark ? '#d8b15f' : '#08131c';
+      themeToggleIcon.innerHTML = isDark 
+        ? '<circle cx="32" cy="32" r="15"/><path d="M32 8v8M32 48v8M8 32h8M48 32h8M14 14l6 6M44 44l6 6M50 14l-6 6M20 44l-6 6"/>'
+        : '<circle cx="32" cy="32" r="12"/><path d="M32 2v10M32 52v10M2 32h10M52 32h10M8 8l7 7M50 50l7 7M56 8l-7 7M22 50l-7 7"/>';
+      themeToggleIcon.style.color = isDark ? '#ffd700' : '#1c5aa3';
     }
   }
 
   renderTheme(window.Synapse.getTheme());
-
-  const queryMode = new URLSearchParams(window.location.search).get('mode');
-  let activeMode = queryMode === 'register' ? 'register' : 'login';
 
   function hideMessages() {
     authError.classList.add('d-none');
@@ -68,27 +51,18 @@ document.addEventListener('DOMContentLoaded', () => {
     authError.classList.add('d-none');
   }
 
-  function setMode(mode) {
-    activeMode = mode;
-    const isRegister = mode === 'register';
-
-    loginTab.classList.toggle('active', !isRegister);
-    registerTab.classList.toggle('active', isRegister);
-    loginForm.classList.toggle('active', !isRegister);
-    registerForm.classList.toggle('active', isRegister);
-    authTitle.textContent = isRegister ? 'Registrarse' : 'Iniciar sesión';
-    authShell.classList.toggle('is-register', isRegister);
-    hideMessages();
-  }
-
   async function loginWithCredentials(email, password) {
     const response = await window.Synapse.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
 
-    window.Synapse.setSession(response);
-    window.location.href = '../index.html';
+    if (response?.token) {
+      window.Synapse.setSession(response);
+      window.location.href = '../index.html';
+    } else {
+      throw new Error('No se recibió token de sesión');
+    }
   }
 
   function setLoading(button, loadingText, originalText) {
@@ -104,29 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  loginTab.addEventListener('click', () => setMode('login'));
-  registerTab.addEventListener('click', () => setMode('register'));
-  switchToLoginFromRegister?.addEventListener('click', () => setMode('login'));
   themeToggle?.addEventListener('click', () => {
     renderTheme(window.Synapse.toggleTheme());
-  });
-
-  fillDemoLogin.addEventListener('click', () => {
-    loginEmail.value = 'paciente@test.com';
-    loginPassword.value = '123456';
-    showSuccess('Datos de ejemplo cargados. Puedes iniciar sesión con ellos si ya existe un usuario de prueba en tu base de datos.');
-    setMode('login');
-  });
-
-  fillDemoRegister.addEventListener('click', () => {
-    registerNombre.value = 'Ariana';
-    registerApellido.value = 'Mora';
-    registerEmail.value = `ariana.mora.${Date.now()}@synapse.test`;
-    registerDocumento.value = `${Math.floor(100000000 + Math.random() * 900000000)}`;
-    registerPassword.value = 'Synapse123!';
-    registerRole.value = '4';
-    showSuccess('Datos de ejemplo cargados. Envía el formulario para crear tu usuario y entrar de inmediato.');
-    setMode('register');
   });
 
   loginForm.addEventListener('submit', async (event) => {
@@ -146,50 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await loginWithCredentials(email, password);
     } catch (error) {
-      showError(error.message || 'No fue posible iniciar sesión.');
+      showError(error.message || 'No fue posible iniciar sesión. Verifica tus credenciales.');
       restoreLoading(loginSubmit);
     }
   });
-
-  registerForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    hideMessages();
-
-    const nombre = registerNombre.value.trim();
-    const apellido = registerApellido.value.trim();
-    const email = registerEmail.value.trim();
-    const documento = registerDocumento.value.trim();
-    const password = registerPassword.value.trim();
-    const role = Number(registerRole.value || 4);
-
-    if (!nombre || !apellido || !email || !documento || !password) {
-      showError('Completa todos los campos para registrarte.');
-      return;
-    }
-
-    setLoading(registerSubmit, 'Creando cuenta...', 'Crear cuenta e iniciar sesión');
-
-    try {
-      await window.Synapse.request('/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          nombre,
-          apellido,
-          email,
-          password,
-          documento,
-          roles: [role]
-        })
-      });
-
-      showSuccess('Cuenta creada. Iniciando sesión ahora...');
-      await loginWithCredentials(email, password);
-    } catch (error) {
-      showError(error.message || 'No fue posible crear la cuenta.');
-      restoreLoading(registerSubmit);
-    }
-  });
-
-  setMode(activeMode);
-  authPanel?.classList.add('ready');
 });

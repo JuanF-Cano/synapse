@@ -136,12 +136,16 @@ h3,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(45, 143, 134, 0.18), rgba(90, 168, 161, 0.28));
-  border: 1px solid var(--synapse-border);
   overflow: hidden;
   color: var(--synapse-toggle-color);
   flex: 0 0 auto;
+}
+
+.brand-logo-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-logo-symbol {
@@ -168,7 +172,7 @@ h3,
 }
 
 .brand-subtitle {
-  font-size: 0.72rem;
+  font-size: 1.25rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--synapse-text-muted);
@@ -724,11 +728,12 @@ h3,
   position: relative;
   overflow: hidden;
   border-radius: 2rem;
-  padding: 1.5rem;
+  padding: 3rem 2.5rem;
   background: var(--synapse-panel);
   border: 1px solid var(--synapse-border);
-  box-shadow: var(--synapse-shadow);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), var(--synapse-shadow);
   backdrop-filter: blur(20px);
+  max-width: 100%;
 }
 
 .auth-panel::before {
@@ -740,6 +745,10 @@ h3,
   border-radius: 50%;
   background: radial-gradient(circle, rgba(45, 143, 134, 0.12), transparent 65%);
   pointer-events: none;
+}
+
+:root[data-theme='dark'] .auth-panel::before {
+  background: radial-gradient(circle, rgba(45, 143, 134, 0.08), transparent 65%);
 }
 
 .auth-panel-header {
@@ -774,7 +783,7 @@ h3,
 
 .auth-forms {
   position: relative;
-  min-height: 420px;
+  min-height: 320px;
 }
 
 .auth-form {
@@ -790,6 +799,15 @@ h3,
   opacity: 1;
   transform: translateX(0) scale(1);
   pointer-events: auto;
+}
+
+/* Centered login form styles */
+#loginForm {
+  position: relative !important;
+  inset: auto !important;
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
 }
 
 .synapse-input {

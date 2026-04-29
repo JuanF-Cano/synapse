@@ -402,6 +402,150 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
+  async function renderAdminDashboard() {
+    const doctors = state.data.doctors || [];
+    const receptionists = state.data.users?.filter((u) => u.roles?.includes('recepcionista')) || [];
+    const patients = state.data.patients || [];
+
+    return `
+      ${renderGreetingCard()}
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <div class="dashboard-card metric-card">
+            <p class="dashboard-muted mb-1">Total medicos</p>
+            <h2 class="h4 mb-0">${doctors.length}</h2>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="dashboard-card metric-card">
+            <p class="dashboard-muted mb-1">Total recepcionistas</p>
+            <h2 class="h4 mb-0">${receptionists.length}</h2>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="dashboard-card metric-card">
+            <p class="dashboard-muted mb-1">Total pacientes</p>
+            <h2 class="h4 mb-0">${patients.length}</h2>
+          </div>
+        </div>
+      </div>
+      
+      <div class="dashboard-card mb-3">
+        <h2 class="h5 mb-3">Médicos</h2>
+        <select id="doctorFilterSelect" class="form-select synapse-input mb-2">
+          <option value="">Selecciona un médico...</option>
+          ${doctors.map((d) => `<option value="${d.id_usuario}">${d.nombre} ${d.apellido}</option>`).join('')}
+        </select>
+        <div id="doctorDetails" class="table-responsive d-none">
+          <table class="table dashboard-table mb-0">
+            <tbody id="doctorDetailsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="dashboard-card mb-3">
+        <h2 class="h5 mb-3">Recepcionistas</h2>
+        <select id="receptionistFilterSelect" class="form-select synapse-input mb-2">
+          <option value="">Selecciona un recepcionista...</option>
+          ${receptionists.map((r) => `<option value="${r.id_usuario}">${r.nombre} ${r.apellido}</option>`).join('')}
+        </select>
+        <div id="receptionistDetails" class="table-responsive d-none">
+          <table class="table dashboard-table mb-0">
+            <tbody id="receptionistDetailsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="dashboard-card">
+        <h2 class="h5 mb-3">Pacientes</h2>
+        <select id="patientFilterSelect" class="form-select synapse-input mb-2">
+          <option value="">Selecciona un paciente...</option>
+          ${patients.map((p) => `<option value="${p.id_usuario}">${p.nombre} ${p.apellido}</option>`).join('')}
+        </select>
+        <div id="patientDetails" class="table-responsive d-none">
+          <table class="table dashboard-table mb-0">
+            <tbody id="patientDetailsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function hydrateAdminDashboard() {
+    const doctorSelect = document.getElementById('doctorFilterSelect');
+    const receptionistSelect = document.getElementById('receptionistFilterSelect');
+    const patientSelect = document.getElementById('patientFilterSelect');
+
+    if (doctorSelect) {
+      doctorSelect.addEventListener('change', () => {
+        const doctorId = Number(doctorSelect.value);
+        const detailsDiv = document.getElementById('doctorDetails');
+        const bodyDiv = document.getElementById('doctorDetailsBody');
+
+        if (!doctorId) {
+          detailsDiv.classList.add('d-none');
+          return;
+        }
+
+        const doctor = state.data.doctors.find((d) => d.id_usuario === doctorId);
+        bodyDiv.innerHTML = `
+          <tr><th>Nombre</th><td>${doctor?.nombre || '-'} ${doctor?.apellido || ''}</td></tr>
+          <tr><th>Especialidad</th><td>${doctor?.especialidad || '-'}</td></tr>
+          <tr><th>Correo</th><td>${doctor?.email || '-'}</td></tr>
+          <tr><th>Telefono</th><td>${doctor?.telefono || '-'}</td></tr>
+          <tr><th>Citas pendientes</th><td>${state.data.appointments?.filter((a) => a.id_medico === doctorId && a.id_estado === 1).length || 0}</td></tr>
+        `;
+        detailsDiv.classList.remove('d-none');
+      });
+    }
+
+    if (receptionistSelect) {
+      receptionistSelect.addEventListener('change', () => {
+        const receptionistId = Number(receptionistSelect.value);
+        const detailsDiv = document.getElementById('receptionistDetails');
+        const bodyDiv = document.getElementById('receptionistDetailsBody');
+
+        if (!receptionistId) {
+          detailsDiv.classList.add('d-none');
+          return;
+        }
+
+        const receptionist = state.data.users?.find((u) => u.id_usuario === receptionistId);
+        bodyDiv.innerHTML = `
+          <tr><th>Nombre</th><td>${receptionist?.nombre || '-'} ${receptionist?.apellido || ''}</td></tr>
+          <tr><th>Correo</th><td>${receptionist?.email || '-'}</td></tr>
+          <tr><th>Telefono</th><td>${receptionist?.telefono || '-'}</td></tr>
+          <tr><th>Roles</th><td>${receptionist?.roles?.join(', ') || '-'}</td></tr>
+        `;
+        detailsDiv.classList.remove('d-none');
+      });
+    }
+
+    if (patientSelect) {
+      patientSelect.addEventListener('change', () => {
+        const patientId = Number(patientSelect.value);
+        const detailsDiv = document.getElementById('patientDetails');
+        const bodyDiv = document.getElementById('patientDetailsBody');
+
+        if (!patientId) {
+          detailsDiv.classList.add('d-none');
+          return;
+        }
+
+        const patient = state.data.patients.find((p) => p.id_usuario === patientId);
+        bodyDiv.innerHTML = `
+          <tr><th>Nombre</th><td>${patient?.nombre || '-'} ${patient?.apellido || ''}</td></tr>
+          <tr><th>Correo</th><td>${patient?.email || '-'}</td></tr>
+          <tr><th>Telefono</th><td>${patient?.telefono || '-'}</td></tr>
+          <tr><th>Fecha de nacimiento</th><td>${patient?.fecha_nacimiento ? new Date(patient.fecha_nacimiento).toLocaleDateString() : '-'}</td></tr>
+          <tr><th>Citas totales</th><td>${state.data.appointments?.filter((a) => a.id_paciente === patientId).length || 0}</td></tr>
+          <tr><th>Citas pendientes</th><td>${state.data.appointments?.filter((a) => a.id_paciente === patientId && a.id_estado === 1).length || 0}</td></tr>
+        `;
+        detailsDiv.classList.remove('d-none');
+      });
+    }
+  }
+
   function renderDoctorsAvailability() {
     const todayInput = new Date().toISOString().slice(0, 10);
 
@@ -483,6 +627,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="col-md-6"><label class="form-label">Apellidos</label><input class="form-control synapse-input" id="newApellido" required></div>
           <div class="col-md-6"><label class="form-label">Correo</label><input class="form-control synapse-input" id="newEmail" type="email" required></div>
           <div class="col-md-6"><label class="form-label">Documento</label><input class="form-control synapse-input" id="newDocumento" required></div>
+          <div class="col-md-6"><label class="form-label">Telefono</label><input class="form-control synapse-input" id="newTelefono" placeholder="Opcional"></div>
+          <div class="col-md-6"><label class="form-label">Fecha de nacimiento</label><input class="form-control synapse-input" id="newFechaNacimiento" type="date" placeholder="Opcional"></div>
+          <div class="col-md-12"><label class="form-label">Direccion</label><input class="form-control synapse-input" id="newDireccion" placeholder="Opcional"></div>
           <div class="col-md-6"><label class="form-label">Contrasena</label><input class="form-control synapse-input" id="newPassword" type="password" required></div>
           <div class="col-md-6">
             <label class="form-label">Rol</label>
@@ -1188,6 +1335,14 @@ document.addEventListener('DOMContentLoaded', () => {
         roles: [role]
       };
 
+      const telefono = document.getElementById('newTelefono').value.trim();
+      const fecha_nacimiento = document.getElementById('newFechaNacimiento').value;
+      const direccion = document.getElementById('newDireccion').value.trim();
+
+      if (telefono) payload.telefono = telefono;
+      if (fecha_nacimiento) payload.fecha_nacimiento = fecha_nacimiento;
+      if (direccion) payload.direccion = direccion;
+
       if (Object.keys(extras).length > 0) {
         payload.extras = extras;
       }
@@ -1594,7 +1749,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = state.activeRole;
     const view = state.activeView;
 
-    if ((role === 'recepcionista' || role === 'admin') && view === 'overview') {
+    if (role === 'admin' && view === 'overview') {
+      mainRoot.innerHTML = await renderAdminDashboard();
+      hydrateAdminDashboard();
+      return;
+    } else if ((role === 'recepcionista' || role === 'admin') && view === 'overview') {
       mainRoot.innerHTML = await renderReceptionistOverview();
     } else if (role === 'medico' && view === 'overview') {
       mainRoot.innerHTML = await renderDoctorOverview();
@@ -1622,6 +1781,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     } else if (view === 'treatment-prices') {
       mainRoot.innerHTML = renderTreatmentPrices();
+      hydrateTreatmentPrices();
+      return;
     } else if (view === 'medical-history') {
       mainRoot.innerHTML = renderMedicalHistorySearch();
       hydrateMedicalHistorySearch();
