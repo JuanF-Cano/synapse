@@ -299,6 +299,7 @@ Main endpoints:
 /api/doctors
 /api/appointments
 /api/reports
+/api/specialty
 /api/docs
 ```
 ---
