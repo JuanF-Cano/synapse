@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
       patients: [],
       users: [],
       receptionists: [],
+      specialties: [],
       treatments: [],
       facturas: []
     },
@@ -38,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'doctors-availability',
     'assign-appointments',
     'register-users',
+    'specialties',
     'manage-users',
     'reports',
     'treatment-prices',
@@ -110,6 +112,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function renderSpecialtyOptions(selectedValue = '') {
+    return state.data.specialties.length > 0
+      ? state.data.specialties
+          .map((specialty) => `<option value="${specialty.id_especialidad}" ${String(specialty.id_especialidad) === String(selectedValue) ? 'selected' : ''}>${specialty.nombre}</option>`)
+          .join('')
+      : '<option value="">No hay especialidades registradas</option>';
+  }
+
+  function renderSpecialtyNameOptions() {
+    return state.data.specialties.length > 0
+      ? state.data.specialties
+          .map((specialty) => `<option value="${specialty.nombre}">${specialty.nombre}</option>`)
+          .join('')
+      : '';
+  }
+
+  function renderTreatmentSummary(treatments = []) {
+    const list = Array.isArray(treatments) ? treatments : [];
+    return list.length > 0
+      ? list.map((treatment) => treatment.descripcion || treatment.nombre || 'Tratamiento').join(', ')
+      : 'Sin tratamientos registrados.';
+  }
+
   function sameDay(a, b) {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   }
@@ -161,11 +186,12 @@ document.addEventListener('DOMContentLoaded', () => {
       api(`/doctors/availability?date=${today}`).catch(() => []),
       api('/patients').catch(() => []),
       api('/users').catch(() => ({ users: [] })),
+      api('/specialty').catch(() => []),
       api('/treatments').catch(() => []),
       api('/facturas').catch(() => [])
     ];
 
-    const [appointments, availability, patients, usersPayload, treatments, facturas] = await Promise.all(requests);
+    const [appointments, availability, patients, usersPayload, specialties, treatments, facturas] = await Promise.all(requests);
     state.data.appointments = Array.isArray(appointments) ? appointments : [];
     state.data.doctors = Array.isArray(availability)
       ? availability
@@ -177,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.data.receptionists = state.data.users.filter((user) =>
       Array.isArray(user?.roles) && user.roles.includes('recepcionista')
     );
+    state.data.specialties = Array.isArray(specialties) ? specialties : [];
     state.data.treatments = Array.isArray(treatments) ? treatments : [];
     state.data.facturas = Array.isArray(facturas) ? facturas : [];
   }
@@ -229,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return [
         { id: 'overview', label: 'Dashboard general' },
         { id: 'register-users', label: 'Gestion de usuarios' },
+        { id: 'specialties', label: 'Especialidades' },
         { id: 'doctors-availability', label: 'Disponibilidad medica' },
         { id: 'assign-appointments', label: 'Citas' },
         { id: 'reports', label: 'Reportes' },
@@ -275,6 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <summary>Operacion recepcion</summary>
             <div class="admin-group-items">
               <button type="button" class="sidebar-link ${state.activeView === 'register-users' ? 'active' : ''}" data-view="register-users">Gestion de usuarios</button>
+              <button type="button" class="sidebar-link ${state.activeView === 'specialties' ? 'active' : ''}" data-view="specialties">Especialidades</button>
               <button type="button" class="sidebar-link ${state.activeView === 'doctors-availability' ? 'active' : ''}" data-view="doctors-availability">Disponibilidad medica</button>
               <button type="button" class="sidebar-link ${state.activeView === 'assign-appointments' ? 'active' : ''}" data-view="assign-appointments">Citas</button>
               <button type="button" class="sidebar-link ${state.activeView === 'treatment-prices' ? 'active' : ''}" data-view="treatment-prices">Tratamientos y costos</button>
@@ -576,9 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderAssignAppointments() {
-    const specialtyOptions = [...new Set(state.data.doctors.map((d) => d.especialidad).filter(Boolean))]
-      .map((spec) => `<option value="${spec}">${spec}</option>`)
-      .join('');
+    const specialtyOptions = renderSpecialtyNameOptions();
 
     const patientOptions = state.data.patients
       .map((patient) => `<option value="${patient.id_usuario}">${patient.nombre} ${patient.apellido}</option>`)
@@ -637,9 +664,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="col-md-6"><label class="form-label">Apellidos</label><input class="form-control synapse-input" id="newApellido" required></div>
           <div class="col-md-6"><label class="form-label">Correo</label><input class="form-control synapse-input" id="newEmail" type="email" required></div>
           <div class="col-md-6"><label class="form-label">Documento</label><input class="form-control synapse-input" id="newDocumento" required></div>
-          <div class="col-md-6"><label class="form-label">Telefono</label><input class="form-control synapse-input" id="newTelefono" placeholder="Opcional"></div>
-          <div class="col-md-6"><label class="form-label">Fecha de nacimiento</label><input class="form-control synapse-input" id="newFechaNacimiento" type="date" placeholder="Opcional"></div>
-          <div class="col-md-12"><label class="form-label">Direccion</label><input class="form-control synapse-input" id="newDireccion" placeholder="Opcional"></div>
+          <div class="col-md-6"><label class="form-label">Telefono</label><input class="form-control synapse-input" id="newTelefono""></div>
+          <div class="col-md-6"><label class="form-label">Fecha de nacimiento</label><input class="form-control synapse-input" id="newFechaNacimiento" type="date""></div>
+          <div class="col-md-12"><label class="form-label">Direccion</label><input class="form-control synapse-input" id="newDireccion""></div>
           <div class="col-md-6"><label class="form-label">Contrasena</label><input class="form-control synapse-input" id="newPassword" type="password" required></div>
           <div class="col-md-6">
             <label class="form-label">Rol</label>
@@ -658,7 +685,10 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
               <div class="col-md-6">
                 <label class="form-label" for="newIdEspecialidad">Especialidad</label>
-                <input class="form-control synapse-input" id="newIdEspecialidad" type="number" min="1" placeholder="Requerido para medico">
+                    <select class="form-select synapse-input" id="newIdEspecialidad">
+                      <option value="">Selecciona especialidad</option>
+                      ${renderSpecialtyOptions()}
+                    </select>
               </div>
             </div>
           </div>
@@ -707,6 +737,43 @@ document.addEventListener('DOMContentLoaded', () => {
                   <td>${formatCOP(t.costo || 0)}</td>
                 </tr>
               `).join('') || '<tr><td colspan="3">No hay tratamientos.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSpecialties() {
+    return `
+      ${renderGreetingCard()}
+      <div class="dashboard-card mb-3">
+        <h2 class="h5 mb-3">Especialidades</h2>
+        <p class="dashboard-muted mb-3">Solo los administradores pueden crear, actualizar y eliminar especialidades.</p>
+        <form id="specialtyForm" class="row g-3 mb-4">
+          <div class="col-md-5">
+            <label class="form-label" for="specialtyName">Nombre</label>
+            <input id="specialtyName" class="form-control synapse-input" required>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label" for="specialtyDescription">Descripcion</label>
+            <input id="specialtyDescription" class="form-control synapse-input"">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-nav-primary w-100">Agregar</button>
+          </div>
+        </form>
+        <div class="table-responsive">
+          <table class="table dashboard-table mb-0">
+            <thead><tr><th>ID</th><th>Nombre</th><th>Descripcion</th></tr></thead>
+            <tbody>
+              ${state.data.specialties.map((specialty) => `
+                <tr>
+                  <td>${specialty.id_especialidad || '-'}</td>
+                  <td>${specialty.nombre || '-'}</td>
+                  <td>${specialty.descripcion || '-'}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="3">No hay especialidades registradas.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -824,9 +891,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderBookAppointment() {
-    const specialtyOptions = [...new Set(state.data.doctors.map((doctor) => doctor.especialidad).filter(Boolean))]
-      .map((spec) => `<option value="${spec}">${spec}</option>`)
-      .join('');
+    const specialtyOptions = renderSpecialtyNameOptions();
 
     const doctorOptions = state.data.doctors
       .map((doctor) => `<option value="${doctor.id_usuario}">${doctor.nombre} ${doctor.apellido} - ${doctor.especialidad || 'Sin especialidad'}</option>`)
@@ -975,11 +1040,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </select>
           </div>
           <div class="col-md-6">
-            <label class="form-label" for="assignTreatmentSelect">Tratamiento</label>
-            <select class="form-select synapse-input" id="assignTreatmentSelect">
-              <option value="">Selecciona tratamiento</option>
-              ${state.data.treatments.map((treatment) => `<option value="${treatment.id_tratamiento}">${treatment.descripcion}</option>`).join('')}
+            <label class="form-label" for="assignTreatmentSelect">Tratamientos</label>
+            <select class="form-select synapse-input" id="assignTreatmentSelect" multiple size="6">
+              ${state.data.treatments.map((treatment) => `<option value="${treatment.id_tratamiento}">${treatment.descripcion}</option>`).join('') || '<option value="">No hay tratamientos</option>'}
             </select>
+            <small class="dashboard-muted">Mantén presionada la tecla Ctrl para seleccionar varios tratamientos.</small>
           </div>
           <div class="col-12">
             <label class="form-label" for="historyDescription">Descripcion general</label>
@@ -991,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="col-12 d-flex gap-2">
             <button class="btn btn-nav-primary" id="saveHistoryBtn" type="button">Guardar historia</button>
-            <button class="btn btn-nav-secondary" id="assignTreatmentBtn" type="button">Asignar tratamiento</button>
+            <button class="btn btn-nav-secondary" id="assignTreatmentBtn" type="button">Agregar tratamientos</button>
           </div>
           <div class="col-12"><small class="dashboard-muted" id="editHistoryFeedback"></small></div>
         </div>
@@ -1059,6 +1124,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="history-entry">
             <strong>Cita #${recent[index]?.id_cita || '-'}</strong>
             <p class="mb-1">${record?.descripcion_general || 'Sin descripcion registrada.'}</p>
+            <small class="dashboard-muted d-block mb-1">Tratamientos: ${renderTreatmentSummary(record?.tratamientos)}</small>
             <small class="dashboard-muted">${record?.observaciones || 'Sin observaciones.'}</small>
           </div>
         `).join('') || '<p class="dashboard-muted mb-0">Aun no hay historias para mostrar.</p>'}
@@ -1078,6 +1144,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="history-entry">
             <strong>Cita #${mine[index]?.id_cita || '-'}</strong>
             <p class="mb-1">${record?.descripcion_general || 'Sin descripcion registrada.'}</p>
+            <small class="dashboard-muted d-block mb-1">Tratamientos: ${renderTreatmentSummary(record?.tratamientos)}</small>
             <small class="dashboard-muted">${record?.observaciones || 'Sin observaciones.'}</small>
           </div>
         `).join('') || '<p class="dashboard-muted mb-0">No hay historia clinica asociada.</p>'}
@@ -1210,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <small class="dashboard-muted" id="accountFeedback"></small>
           </div>
         </form>
-        <div class="dashboard-note mt-3">Tu contraseña siempre puede cambiarse. Los demas campos solo se pueden completar una vez si siguen vacios, salvo recepcion y administradores.</div>
+        <div class="dashboard-note mt-3">Elige una contraseña segura y no la compartas con nadie. En caso de olvido, contacta a un administrador.</div>
       </div>
     `;
   }
@@ -1513,6 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const response = await api('/users');
         const users = Array.isArray(response?.users) ? response.users : [];
+        const specialtyOptions = renderSpecialtyOptions();
 
         body.innerHTML = users.map((user) => {
           const roles = Array.isArray(user.roles) ? user.roles : [];
@@ -1535,11 +1603,22 @@ document.addEventListener('DOMContentLoaded', () => {
               <td>${user.email || '-'}</td>
               <td>${roles.join(', ') || '-'}</td>
               <td>
-                <div class="d-flex gap-2">
+                <div class="d-grid gap-2">
                   <select class="form-select synapse-input form-select-sm add-role-select" data-user="${user.id_usuario}" style="min-width: 150px;">
                     <option value="">Selecciona</option>
                     ${roleOptions}
                   </select>
+                  <div class="row g-2 d-none add-role-extras" data-user="${user.id_usuario}">
+                    <div class="col-12">
+                      <input class="form-control synapse-input form-select-sm add-role-license" data-user="${user.id_usuario}" placeholder="Numero de licencia">
+                    </div>
+                    <div class="col-12">
+                      <select class="form-select synapse-input form-select-sm add-role-specialty" data-user="${user.id_usuario}">
+                        <option value="">Selecciona especialidad</option>
+                        ${specialtyOptions}
+                      </select>
+                    </div>
+                  </div>
                   <button type="button" class="btn btn-sm btn-nav-primary add-role-btn" data-user="${user.id_usuario}">Agregar</button>
                 </div>
               </td>
@@ -1547,6 +1626,20 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>
           `;
         }).join('') || '<tr><td colspan="5">No hay usuarios.</td></tr>';
+
+        const syncRoleExtras = (userId) => {
+          const select = body.querySelector(`.add-role-select[data-user="${userId}"]`);
+          const extras = body.querySelector(`.add-role-extras[data-user="${userId}"]`);
+          const showDoctorExtras = select?.value === 'medico';
+          extras?.classList.toggle('d-none', !showDoctorExtras);
+        };
+
+        body.querySelectorAll('.add-role-select').forEach((select) => {
+          select.addEventListener('change', () => {
+            syncRoleExtras(select.dataset.user);
+          });
+          syncRoleExtras(select.dataset.user);
+        });
 
         body.querySelectorAll('.add-role-btn').forEach((button) => {
           button.addEventListener('click', async () => {
@@ -1563,16 +1656,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const extras = {};
 
             if (roleName === 'medico') {
-              const numeroLicencia = prompt('Número de licencia del médico:');
-              const idEspecialidad = prompt('ID de especialidad:');
+              const numeroLicencia = body.querySelector(`.add-role-license[data-user="${userId}"]`)?.value.trim();
+              const idEspecialidad = Number(body.querySelector(`.add-role-specialty[data-user="${userId}"]`)?.value);
 
-              if (!numeroLicencia || !idEspecialidad) {
+              if (!numeroLicencia || !Number.isFinite(idEspecialidad) || idEspecialidad <= 0) {
                 window.Synapse.showToast('Licencia y especialidad son requeridas para médicos', 'info');
                 return;
               }
 
               extras.numero_licencia = numeroLicencia;
-              extras.id_especialidad = Number(idEspecialidad);
+              extras.id_especialidad = idEspecialidad;
             }
 
             try {
@@ -1614,6 +1707,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     refreshBtn?.addEventListener('click', loadUsers);
     loadUsers();
+  }
+
+  function hydrateSpecialties() {
+    const form = document.getElementById('specialtyForm');
+    if (!form) {
+      return;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const nombre = document.getElementById('specialtyName').value.trim();
+      const descripcion = document.getElementById('specialtyDescription').value.trim();
+
+      if (!nombre) {
+        window.Synapse.showToast('Ingresa el nombre de la especialidad', 'info');
+        return;
+      }
+
+      try {
+        await api('/specialty', {
+          method: 'POST',
+          body: JSON.stringify({ nombre, descripcion: descripcion || null })
+        });
+        window.Synapse.showToast('Especialidad creada correctamente', 'success');
+        await loadBaseData();
+        mainRoot.innerHTML = renderSpecialties();
+        hydrateSpecialties();
+      } catch (error) {
+        window.Synapse.showToast(error.message || 'No se pudo crear la especialidad', 'error');
+      }
+    });
   }
 
   function hydrateBookAppointment() {
@@ -1788,6 +1913,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="history-entry">
           <strong>Cita #${appointments[index].id_cita} · ${formatDate(appointments[index].fecha)}</strong>
           <p class="mb-1">${record?.descripcion_general || 'Sin descripcion.'}</p>
+          <small class="dashboard-muted d-block mb-1">Tratamientos: ${renderTreatmentSummary(record?.tratamientos)}</small>
           <small class="dashboard-muted">${record?.observaciones || 'Sin observaciones.'}</small>
         </div>
       `).join('') || '<p class="dashboard-muted">No hay historia clinica asociada.</p>';
@@ -1807,24 +1933,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const assignBtn = document.getElementById('assignTreatmentBtn');
     const treatmentSelect = document.getElementById('assignTreatmentSelect');
 
+    const setSelectedTreatments = (recordTreatments = []) => {
+      const selectedIds = new Set((recordTreatments || []).map((item) => String(item.id_tratamiento)));
+      [...treatmentSelect.options].forEach((option) => {
+        option.selected = selectedIds.has(String(option.value));
+      });
+    };
+
     citaSelect.addEventListener('change', async () => {
       feedback.textContent = '';
       const citaId = Number(citaSelect.value);
       if (!citaId) {
         desc.value = '';
         obs.value = '';
+        [...treatmentSelect.options].forEach((option) => {
+          option.selected = false;
+        });
         return;
       }
 
       const record = await api(`/medical-records/${citaId}`).catch(() => null);
       desc.value = record?.descripcion_general || '';
       obs.value = record?.observaciones || '';
+      setSelectedTreatments(record?.tratamientos || []);
     });
 
     saveBtn?.addEventListener('click', async () => {
       const citaId = Number(citaSelect.value);
+      const selectedTreatments = [...treatmentSelect.selectedOptions].map((option) => Number(option.value)).filter((value) => Number.isFinite(value) && value > 0);
       if (!citaId) {
         feedback.textContent = 'Selecciona una cita.';
+        return;
+      }
+
+      if (selectedTreatments.length === 0) {
+        feedback.textContent = 'Selecciona al menos un tratamiento.';
         return;
       }
 
@@ -1834,10 +1977,12 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             id_cita: citaId,
             descripcion_general: desc.value.trim(),
-            observaciones: obs.value.trim()
+            observaciones: obs.value.trim(),
+            id_tratamientos: selectedTreatments
           })
         });
-        feedback.textContent = 'Historia clinica guardada.';
+        feedback.textContent = 'Historia clinica guardada y factura creada.';
+        await loadBaseData();
       } catch (error) {
         feedback.textContent = `${error.message || 'No se pudo guardar.'} (No hay endpoint de actualizacion de historia existente.)`;
       }
@@ -1845,18 +1990,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     assignBtn?.addEventListener('click', async () => {
       const citaId = Number(citaSelect.value);
-      const treatmentId = Number(treatmentSelect.value);
-      if (!citaId || !treatmentId) {
-        feedback.textContent = 'Selecciona cita y tratamiento.';
+      const treatmentIds = [...treatmentSelect.selectedOptions].map((option) => Number(option.value)).filter((value) => Number.isFinite(value) && value > 0);
+      if (!citaId || treatmentIds.length === 0) {
+        feedback.textContent = 'Selecciona cita y al menos un tratamiento.';
         return;
       }
 
       try {
         await api('/treatments/assign', {
           method: 'POST',
-          body: JSON.stringify({ id_cita: citaId, id_tratamiento: treatmentId })
+          body: JSON.stringify({ id_cita: citaId, id_tratamientos: treatmentIds })
         });
-        feedback.textContent = 'Tratamiento asignado.';
+        feedback.textContent = 'Tratamientos asignados y factura actualizada.';
+        await loadBaseData();
       } catch (error) {
         feedback.textContent = error.message || 'No se pudo asignar tratamiento.';
       }
@@ -1949,6 +2095,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = state.activeRole;
     const view = state.activeView;
 
+    if (view === 'specialties' && role !== 'admin') {
+      state.activeView = 'account';
+      renderSidebar();
+      renderMain();
+      return;
+    }
+
     if (role === 'admin' && view === 'overview') {
       mainRoot.innerHTML = await renderAdminDashboard();
       hydrateAdminDashboard();
@@ -1970,6 +2123,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (view === 'register-users') {
       mainRoot.innerHTML = renderRegisterUsers();
       hydrateRegisterUsers();
+      return;
+    } else if (view === 'specialties') {
+      mainRoot.innerHTML = renderSpecialties();
+      hydrateSpecialties();
       return;
     } else if (view === 'manage-users') {
       mainRoot.innerHTML = renderManageUsers();

@@ -23,12 +23,12 @@ const TreatmentModel = {
   },
 
   // Asignar tratamiento a cita
-  async assignToCita(id_cita, id_tratamiento) {
+  async assignToCita(id_cita, id_tratamiento, client = pool) {
     const query = `
       INSERT INTO tratamientos_cita (id_cita, id_tratamiento)
       VALUES ($1, $2);
     `;
-    await pool.query(query, [id_cita, id_tratamiento]);
+    await client.query(query, [id_cita, id_tratamiento]);
   },
 
   // Obtener tratamientos de una cita

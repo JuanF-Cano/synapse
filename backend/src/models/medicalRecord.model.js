@@ -3,7 +3,7 @@ const pool = require('../config/db');
 const MedicalRecordModel = {
 
   // Crear historia clínica
-  async createRecord(data) {
+  async createRecord(data, client = pool) {
     const query = `
       INSERT INTO historias_clinicas (id_cita, descripcion_general, observaciones, fecha)
       VALUES ($1, $2, $3, NOW())
@@ -16,7 +16,7 @@ const MedicalRecordModel = {
       data.observaciones
     ];
 
-    const result = await pool.query(query, values);
+    const result = await client.query(query, values);
     return result.rows[0];
   },
 

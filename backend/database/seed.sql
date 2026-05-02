@@ -24,6 +24,12 @@ INSERT INTO especialidades (nombre, descripcion) VALUES
 ('Cardiología', 'Corazón'),
 ('Pediatría', 'Niños');
 
+--TRATAMIENTOS
+INSERT INTO tratamientos (nombre, descripcion) VALUES
+('Consulta General', 'Evaluación médica general'),
+('Control de Diabetes', 'Seguimiento de pacientes diabéticos'),
+('Vacunación', 'Administración de vacunas');
+
 -- USUARIO PACIENTE EJEMPLO
 --INSERT INTO usuarios (nombre, apellido, email, password, documento)
 --VALUES ('Paciente', 'Pérez', 'paciente@test.com', '123456', '12345678'); -- crear usuario

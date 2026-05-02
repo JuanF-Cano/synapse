@@ -19,11 +19,15 @@ const ReportService = {
   async getFinancialSummary() {
     const result = await pool.query(`
       SELECT 
-        SUM(monto) FILTER (WHERE ef.estado = 'pagada') AS total_pagado,
-        SUM(monto) FILTER (WHERE ef.estado = 'pendiente') AS total_pendiente,
-        SUM(monto) AS total_general
+        COALESCE(SUM(pagos.total_pagado), 0) AS total_pagado,
+        COALESCE(SUM(GREATEST(f.monto - COALESCE(pagos.total_pagado, 0), 0)), 0) AS total_pendiente,
+        COALESCE(SUM(f.monto), 0) AS total_general
       FROM facturas f
-      JOIN estados_factura ef ON f.id_estado = ef.id_estado
+      LEFT JOIN (
+        SELECT id_factura, SUM(monto) AS total_pagado
+        FROM pagos
+        GROUP BY id_factura
+      ) pagos ON pagos.id_factura = f.id_factura
     `);
 
     return result.rows[0];

@@ -1,4 +1,4 @@
-const SpecialtyService = require('../services/especialidad.service');
+const SpecialtyService = require('../services/specialty.service');
 
 const SpecialtyController = {
 

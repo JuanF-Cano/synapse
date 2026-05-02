@@ -3,11 +3,11 @@ const pool = require('../config/db');
 
 const BillingService = {
 
-  async createFactura(data) {
+  async createFactura(data, client = pool) {
     const { copago, id_cita } = data;
 
     // verificar cita
-    const cita = await pool.query(
+    const cita = await client.query(
       'SELECT * FROM citas WHERE id_cita = $1',
       [id_cita]
     );
@@ -15,17 +15,8 @@ const BillingService = {
       throw new Error('Cita no existe');
     }
 
-    // evitar duplicar factura
-    const existing = await pool.query(
-      'SELECT * FROM facturas WHERE id_cita = $1',
-      [id_cita]
-    );
-    if (existing.rows.length > 0) {
-      throw new Error('La cita ya tiene factura');
-    }
-
     // calcular monto
-    const total = await BillingModel.getTotalFromCita(copago, id_cita);
+    const total = await BillingModel.getTotalFromCita(copago || 0, id_cita, client);
 
     if (total === 0) {
       throw new Error('No hay tratamientos asociados a la cita');
@@ -37,29 +28,52 @@ const BillingService = {
       id_estado: 1,
       concepto: 'Servicios médicos',
       monto: total
-    });
+    }, client);
   },
 
   async registrarPago(data) {
     const { id_factura, monto } = data;
 
-    // verificar factura
-    const factura = await pool.query(
-      'SELECT * FROM facturas WHERE id_factura = $1',
-      [id_factura]
-    );
-
-    if (factura.rows.length === 0) {
-      throw new Error('Factura no existe');
+    if (!Number.isFinite(Number(monto)) || Number(monto) <= 0) {
+      throw new Error('Monto inválido');
     }
 
-    // registrar pago
-    const pago = await BillingModel.createPago(data);
+    const client = await pool.connect();
 
-    // actualizar estado (pagada, estado 2)
-    await BillingModel.updateEstadoFactura(id_factura, 2);
+    try {
+      await client.query('BEGIN');
 
-    return pago;
+      // verificar factura
+      const factura = await BillingModel.getFacturaResumenById(id_factura, client);
+      if (!factura) {
+        throw new Error('Factura no existe');
+      }
+
+      const saldoPendiente = Number(factura.saldo_pendiente || 0);
+      if (Number(monto) > saldoPendiente) {
+        throw new Error('El monto no puede superar el saldo pendiente');
+      }
+
+      // registrar pago
+      const pago = await BillingModel.createPago(data, client);
+
+      const nuevoSaldo = saldoPendiente - Number(monto);
+
+      // actualizar estado (pagada, estado 2)
+      await BillingModel.updateEstadoFactura(id_factura, nuevoSaldo === 0 ? 2 : 1, client);
+
+      await client.query('COMMIT');
+
+      return {
+        ...pago,
+        saldo_pendiente: nuevoSaldo
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 
   async getFacturas() {
