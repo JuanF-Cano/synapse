@@ -131,8 +131,8 @@ h3,
 }
 
 .brand-logo-frame {
-  width: 46px;
-  height: 46px;
+  width: 96px;
+  height: 96px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -150,7 +150,7 @@ h3,
 
 .brand-logo-symbol {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 1.05rem;
+  font-size: 2.1rem;
   font-weight: 800;
 }
 
@@ -1237,8 +1237,8 @@ footer {
 
   .brand-logo-frame,
   .theme-toggle {
-    width: 42px;
-    height: 42px;
+    width: 88px;
+    height: 88px;
   }
 
   .hero-title {

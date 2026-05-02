@@ -10,6 +10,10 @@ SYNAPSE is a web application designed for the digital management of clinical and
 
 ---
 
+## Steps to run app
+
+
+
 ## Project Architecture
 
 ```
@@ -198,7 +202,23 @@ git clone https://github.com/JuanF-Cano/synapse
 cd synapse
 ```
 
-## 2. Initialize the Database
+
+## 2. Configure Environment Variables
+Use `backend/.env.example` as reference and create a `.env` file inside `/backend`:
+```env
+DB_USER=postgres
+DB_HOST=localhost
+DB_NAME=synapse
+DB_PASSWORD=your_password
+DB_PORT=5432
+
+JWT_SECRET=your_secret_key
+BACKEND_PORT=3000
+```
+
+For this, you will need to make sure PostgreSQL is correctly installed beforehand, and an empty database named `synapse` should exist.
+
+## 3. Initialize the Database
 ```bash
 cd backend
 npm install
@@ -208,19 +228,15 @@ This will:
 
 - Create all tables (`schema.sql`)
 - Insert initial data (`seed.sql`)
+- Automatically create/update a default admin user with hashed password
 
-## 3. Configure Environment Variables
-Create a `.env` file inside `/backend`:
-```env
-DB_USER=postgres
-DB_HOST=localhost
-DB_NAME=synapse
-DB_PASSWORD=your_password
-DB_PORT=5432
+Default admin credentials created by `db:init`:
 
-JWT_SECRET=your_secret_key
-PORT=3000
-```
+- Email: `admin@synapse.local`
+- Password: `SynapseAdmin123!`
+
+To change those credentials, edit `backend/src/scripts/db.js` in `DEFAULT_ADMIN`.
+
 
 ## 4. Run the Backend
 ```bash
